@@ -13,11 +13,12 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { fetchJson } from '@/app/api/client';
+import { getOpsClients } from '@/app/api/ops';
 
 interface RequestRow {
   id: string;
   client_id: string;
-  client_name: string;
+  client_name: string | null;
   status: string;
   file_path: string;
   file_name: string | null;
@@ -26,6 +27,8 @@ interface RequestRow {
   created_at: string;
   approved_at: string | null;
   rejection_reason: string | null;
+  from_number?: string | null;
+  linked?: boolean;
 }
 
 async function getOpsRequests(): Promise<{ requests: RequestRow[] }> {
@@ -37,6 +40,8 @@ type ApprovePayload = {
   clearance_pathway: 'PORT_CLEARANCE' | 'T1_TRANSIT';
   expected_arrival_date?: string;
   container_count?: number;
+  client_id?: string;
+  phone_number?: string;
 };
 
 async function approveRequest(payload: ApprovePayload): Promise<{ cargo?: Record<string, unknown> }> {
@@ -67,7 +72,10 @@ export function RequestValidationPage() {
     clearancePathway: 'PORT_CLEARANCE' | 'T1_TRANSIT';
     expectedArrival: string;
     containerCount: string;
+    selectedClientId: string;
+    phoneNumber: string;
   } | null>(null);
+  const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
 
   const refresh = async () => {
     const res = await getOpsRequests();
@@ -80,8 +88,14 @@ export function RequestValidationPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getOpsRequests();
-        if (!cancelled) setRequests(res.requests ?? []);
+        const [res, clientRes] = await Promise.all([
+          getOpsRequests(),
+          getOpsClients().catch(() => ({ clients: [] })),
+        ]);
+        if (!cancelled) {
+          setRequests(res.requests ?? []);
+          setClients(clientRes.clients ?? []);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -119,6 +133,18 @@ export function RequestValidationPage() {
       }
       const cc = Number(approveDialog.containerCount);
       if (Number.isFinite(cc) && cc >= 1) payload.container_count = cc;
+      if (!approveDialog.request.linked) {
+        const phoneDigits = approveDialog.phoneNumber.replace(/\D/g, '');
+        if (approveDialog.selectedClientId && approveDialog.selectedClientId !== '__new__') {
+          payload.client_id = approveDialog.selectedClientId;
+        } else if (phoneDigits.length >= 9) {
+          payload.phone_number = phoneDigits;
+        } else {
+          window.alert('Select a client or enter a phone number for this unlinked request.');
+          setBusy((m) => ({ ...m, [approveDialog.request.id]: false }));
+          return;
+        }
+      }
       await approveRequest(payload);
       await refresh();
       setApproveDialog(null);
@@ -191,7 +217,9 @@ export function RequestValidationPage() {
               return (
                 <div key={req.id} className="px-6 py-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-1">
-                    <div className="text-sm" style={{ fontWeight: 600 }}>{req.client_name}</div>
+                    <div className="text-sm" style={{ fontWeight: 600 }}>
+                      {req.linked ? req.client_name : req.from_number ? `📱 ${req.from_number}` : 'Unknown sender'}
+                    </div>
                     <div className="text-xs opacity-60">
                       {req.file_name ?? 'Bill of Lading'}
                       {req.bill_of_lading ? ` · B/L ${req.bill_of_lading}` : ''}
@@ -220,6 +248,8 @@ export function RequestValidationPage() {
                           clearancePathway: 'PORT_CLEARANCE',
                           expectedArrival: '',
                           containerCount: '1',
+                          selectedClientId: '',
+                          phoneNumber: '',
                         })
                       }
                       className="bg-green-600 text-white hover:bg-green-700"
@@ -257,6 +287,45 @@ export function RequestValidationPage() {
               </p>
             </div>
             <div className="p-6 space-y-4">
+              {!approveDialog.request.linked && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Client</Label>
+                    <Select
+                      value={approveDialog.selectedClientId}
+                      onValueChange={(v) =>
+                        setApproveDialog({ ...approveDialog, selectedClientId: v })
+                      }
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select existing client…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__new__">+ Enter phone number for new client</SelectItem>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {approveDialog.selectedClientId === '__new__' && (
+                    <div className="space-y-2">
+                      <Label>Phone number (new client)</Label>
+                      <Input
+                        type="tel"
+                        value={approveDialog.phoneNumber}
+                        onChange={(e) => setApproveDialog({ ...approveDialog, phoneNumber: e.target.value })}
+                        className="bg-background"
+                        placeholder="e.g. 250788123456"
+                      />
+                      <p className="text-xs opacity-60">A new client will be created with this number. All alerts go here.</p>
+                    </div>
+                  )}
+                  {approveDialog.request.from_number && (
+                    <p className="text-xs opacity-60">Sender: {approveDialog.request.from_number}</p>
+                  )}
+                </>
+              )}
               <div className="space-y-2">
                 <Label>Tax payment method</Label>
                 <Select
