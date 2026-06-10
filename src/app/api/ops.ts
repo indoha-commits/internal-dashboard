@@ -438,3 +438,71 @@ export async function createOpsCargoApproval(
     body: JSON.stringify(payload),
   });
 }
+
+export type EmailIntakeSetupGuide = {
+  tenant_id: string;
+  tenant_name: string | null;
+  tenant_subdomain: string | null;
+  forward_to: string;
+  forward_local: string;
+  intake_domain: string;
+  webhook_url_hint: string;
+  pipeline: { inbound_enabled: boolean; provider_hint: string };
+  filter_keywords: string[];
+  filter_extensions: string[];
+  gmail_admin_steps: string[];
+  exchange_admin_steps: string[];
+  recommended_workflow: string;
+  ops_forward_steps: string[];
+  clients: Array<{
+    id: string;
+    name: string;
+    billing_email: string | null;
+    forward_to: string;
+  }>;
+  selected_client: {
+    id: string;
+    name: string;
+    billing_email: string | null;
+    forward_to: string;
+    sql_hint: string;
+    ops_sop_email: { subject: string; body: string };
+    client_letter_email: { subject: string; body: string };
+    it_email_template: { subject: string; body: string };
+    packet_html: string;
+    client_packet_html: string;
+  } | null;
+};
+
+export async function getEmailIntakeSetup(clientId?: string): Promise<EmailIntakeSetupGuide> {
+  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : '';
+  return await fetchJson<EmailIntakeSetupGuide>(`/ops/email-intake/setup${q}`);
+}
+
+export async function patchEmailIntakeClientBillingEmail(
+  clientId: string,
+  billingEmail: string,
+): Promise<{ ok: boolean; client_id: string; billing_email: string }> {
+  return await fetchJson(`/ops/email-intake/clients/${encodeURIComponent(clientId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ billing_email: billingEmail }),
+  });
+}
+
+export async function testEmailIntakeRoute(
+  clientId?: string,
+  fromEmail?: string,
+): Promise<{
+  ok: boolean;
+  dry_run: boolean;
+  forward_to: string;
+  from_email: string;
+  route: Record<string, unknown>;
+  pipeline: { inbound_enabled: boolean; webhook_configured: boolean };
+  hint: string;
+}> {
+  return await fetchJson('/ops/email-intake/test', {
+    method: 'POST',
+    body: JSON.stringify({ client_id: clientId, from_email: fromEmail }),
+  });
+}

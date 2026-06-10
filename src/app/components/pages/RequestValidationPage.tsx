@@ -123,6 +123,28 @@ export function RequestValidationPage() {
       await refresh();
       setApproveDialog(null);
       navigate('/cargo-registry');
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : String(e);
+      let msg = raw;
+      const jsonStart = raw.indexOf('{');
+      if (jsonStart >= 0) {
+        try {
+          const body = JSON.parse(raw.slice(jsonStart)) as { error?: string; detail?: string };
+          if (body.error === 'cargo_create_failed' && body.detail === 'no_valid_containers') {
+            msg =
+              'No ISO container numbers were found on this B/L. Enter a container count in the approve dialog (e.g. 1 or 5) and approve again.';
+          } else if (body.error === 'bl_number_not_found') {
+            msg = 'Jarvis could not read a B/L number from the file. Check the scan or enter B/L on the request.';
+          } else if (body.detail) {
+            msg = `${body.error ?? 'approve_failed'}: ${body.detail}`;
+          } else if (body.error) {
+            msg = body.error;
+          }
+        } catch {
+          /* keep raw */
+        }
+      }
+      window.alert(msg);
     } finally {
       setBusy((m) => ({ ...m, [approveDialog.request.id]: false }));
     }
@@ -275,7 +297,7 @@ export function RequestValidationPage() {
                   value={approveDialog.containerCount}
                   onChange={(e) => setApproveDialog({ ...approveDialog, containerCount: e.target.value })}
                   className="bg-background"
-                  placeholder="e.g. 5 → GROUP123-001 … 005"
+                  placeholder="e.g. 5 (creates ISO-style placeholders if OCR finds none)"
                 />
               </div>
               <div className="flex justify-end gap-2">

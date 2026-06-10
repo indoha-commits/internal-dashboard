@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Trash2, UserPlus, Radar } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Mail } from 'lucide-react';
 
 interface OpsSidebarContentProps {
   currentPage: string;
@@ -13,13 +13,11 @@ const navItems = [
   { id: 'validation-requests', label: 'Validation Requests', icon: Inbox },
   { id: 'validation', label: 'Validation Queue', icon: CheckSquare },
   { id: 'operations-update', label: 'Operations Update', icon: ClipboardCheck },
-  { id: 'manager-dashboard', label: 'Manager Dashboard', icon: Radar },
+  { id: 'email-intake-setup', label: 'Email Intake Setup', icon: Mail },
   { id: 'import-cargo', label: 'Import Cargo', icon: DownloadCloud },
   { id: 'cargo-timeline', label: 'Cargo Timeline', icon: Clock },
   { id: 'cargo-registry', label: 'Cargo Registry', icon: Package },
   { id: 'activity-log', label: 'Activity Log', icon: Activity },
-  { id: 'add-client-user', label: 'Add Client User', icon: UserPlus },
-  { id: 'delete-client', label: 'Delete Client', icon: Trash2 },
 ] as const;
 
 export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {

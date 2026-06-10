@@ -24,7 +24,7 @@ import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
 import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
-import { ManagerDashboardPage } from '@/app/components/pages/ManagerDashboardPage';
+import { EmailIntakeSetupPage } from '@/app/components/pages/EmailIntakeSetupPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -40,7 +40,7 @@ type OpsPageId =
   | 'delete-client'
   | 'add-client-user'
   | 'activity-log'
-  | 'manager-dashboard';
+  | 'email-intake-setup';
 
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
@@ -55,7 +55,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
-  'manager-dashboard': 'manager-dashboard',
+  'email-intake-setup': 'email-intake-setup',
 };
 
 const pathToPage: Record<string, OpsPageId> = {
@@ -71,7 +71,7 @@ const pathToPage: Record<string, OpsPageId> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
-  'manager-dashboard': 'manager-dashboard',
+  'email-intake-setup': 'email-intake-setup',
 };
 
 function requireEnv(name: string): string {
@@ -167,8 +167,8 @@ function OpsPageRenderer({
       return <ActivityLogPage />;
     case 'operations-update':
       return <OperationsUpdatePage />;
-    case 'manager-dashboard':
-      return <ManagerDashboardPage />;
+    case 'email-intake-setup':
+      return <EmailIntakeSetupPage />;
     default:
       return <DashboardPage />;
   }
