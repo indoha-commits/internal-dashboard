@@ -25,6 +25,7 @@ import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { EmailIntakeSetupPage } from '@/app/components/pages/EmailIntakeSetupPage';
+import { WhatsAppNumbersPage } from '@/app/components/pages/WhatsAppNumbersPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -40,7 +41,8 @@ type OpsPageId =
   | 'delete-client'
   | 'add-client-user'
   | 'activity-log'
-  | 'email-intake-setup';
+  | 'email-intake-setup'
+  | 'whatsapp-numbers';
 
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
@@ -56,6 +58,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
   'email-intake-setup': 'email-intake-setup',
+  'whatsapp-numbers': 'whatsapp-numbers',
 };
 
 const pathToPage: Record<string, OpsPageId> = {
@@ -72,6 +75,7 @@ const pathToPage: Record<string, OpsPageId> = {
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
   'email-intake-setup': 'email-intake-setup',
+  'whatsapp-numbers': 'whatsapp-numbers',
 };
 
 function requireEnv(name: string): string {
@@ -169,6 +173,8 @@ function OpsPageRenderer({
       return <OperationsUpdatePage />;
     case 'email-intake-setup':
       return <EmailIntakeSetupPage />;
+    case 'whatsapp-numbers':
+      return <WhatsAppNumbersPage />;
     default:
       return <DashboardPage />;
   }

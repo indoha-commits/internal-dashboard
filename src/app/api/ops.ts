@@ -506,3 +506,56 @@ export async function testEmailIntakeRoute(
     body: JSON.stringify({ client_id: clientId, from_email: fromEmail }),
   });
 }
+
+// ── Ops WhatsApp numbers management ──
+
+export type OpsNumber = {
+  id: string;
+  phone_number: string;
+  role: 'ops' | 'company_admin';
+  label: string | null;
+  created_at: string;
+};
+
+export type ListOpsNumbersResponse = {
+  numbers: OpsNumber[];
+};
+
+export async function listOpsNumbers(): Promise<ListOpsNumbersResponse> {
+  return await fetchJson<ListOpsNumbersResponse>('/ops/tenant/ops-numbers');
+}
+
+export type AddOpsNumberInput = {
+  phone_number: string;
+  role: 'ops' | 'company_admin';
+  label?: string;
+};
+
+export type AddOpsNumberResponse = {
+  number: OpsNumber;
+};
+
+export async function addOpsNumber(input: AddOpsNumberInput): Promise<AddOpsNumberResponse> {
+  return await fetchJson<AddOpsNumberResponse>('/ops/tenant/ops-numbers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export type UpdateOpsNumberInput = {
+  role?: 'ops' | 'company_admin';
+  label?: string | null;
+};
+
+export async function updateOpsNumber(id: string, input: UpdateOpsNumberInput): Promise<{ ok: true }> {
+  return await fetchJson<{ ok: true }>(`/ops/tenant/ops-numbers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteOpsNumber(id: string): Promise<{ ok: true }> {
+  return await fetchJson<{ ok: true }>(`/ops/tenant/ops-numbers/${id}`, {
+    method: 'DELETE',
+  });
+}

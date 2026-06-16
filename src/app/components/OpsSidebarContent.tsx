@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Mail } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Mail, Phone } from 'lucide-react';
 
 interface OpsSidebarContentProps {
   currentPage: string;
@@ -18,6 +18,7 @@ const navItems = [
   { id: 'cargo-timeline', label: 'Cargo Timeline', icon: Clock },
   { id: 'cargo-registry', label: 'Cargo Registry', icon: Package },
   { id: 'activity-log', label: 'Activity Log', icon: Activity },
+  { id: 'whatsapp-numbers', label: 'WhatsApp Numbers', icon: Phone },
 ] as const;
 
 export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {
