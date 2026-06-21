@@ -1,4 +1,5 @@
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Mail, Phone } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, User } from 'lucide-react';
+import { sessionStore } from '@/app/auth/sessionStore';
 
 interface OpsSidebarContentProps {
   currentPage: string;
@@ -7,98 +8,131 @@ interface OpsSidebarContentProps {
   onNavigate?: () => void;
 }
 
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'pending-documents', label: 'Pending Documents', icon: FileText },
-  { id: 'validation-requests', label: 'Validation Requests', icon: Inbox },
-  { id: 'validation', label: 'Validation Queue', icon: CheckSquare },
-  { id: 'operations-update', label: 'Operations Update', icon: ClipboardCheck },
-  { id: 'email-intake-setup', label: 'Email Intake Setup', icon: Mail },
-  { id: 'import-cargo', label: 'Import Cargo', icon: DownloadCloud },
-  { id: 'cargo-timeline', label: 'Cargo Timeline', icon: Clock },
-  { id: 'cargo-registry', label: 'Cargo Registry', icon: Package },
-  { id: 'activity-log', label: 'Activity Log', icon: Activity },
-  { id: 'whatsapp-numbers', label: 'WhatsApp Numbers', icon: Phone },
-] as const;
+type NavGroup = {
+  label: string;
+  items: Array<{ id: string; label: string; icon: React.ElementType }>;
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: 'Operations',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'pending-documents', label: 'Pending Documents', icon: FileText },
+      { id: 'validation-requests', label: 'Validation Requests', icon: Inbox },
+      { id: 'validation', label: 'Validation Queue', icon: CheckSquare },
+      { id: 'operations-update', label: 'Operations Update', icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: 'Cargo',
+    items: [
+      { id: 'cargo-registry', label: 'Cargo Registry', icon: Package },
+      { id: 'cargo-timeline', label: 'Cargo Timeline', icon: Clock },
+      { id: 'import-cargo', label: 'Import Cargo', icon: DownloadCloud },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+
+      { id: 'whatsapp-numbers', label: 'WhatsApp Numbers', icon: Phone },
+      { id: 'activity-log', label: 'Activity Log', icon: Activity },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ],
+  },
+];
+
+function NavButton({
+  item,
+  currentPage,
+  onPageChange,
+  onNavigate,
+}: {
+  item: NavGroup['items'][number];
+  currentPage: string;
+  onPageChange: (page: string) => void;
+  onNavigate?: () => void;
+}) {
+  const Icon = item.icon;
+  const isActive = currentPage === item.id;
+
+  return (
+    <button
+      onClick={() => {
+        onPageChange(item.id);
+        onNavigate?.();
+      }}
+      aria-current={isActive ? 'page' : undefined}
+      className={`sidebar-nav-btn ${isActive ? 'active' : ''}`}
+    >
+      <Icon className="w-4 h-4" strokeWidth={1.5} />
+      <span className="text-sm" style={{ fontWeight: 400 }}>{item.label}</span>
+    </button>
+  );
+}
 
 export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {
   return (
-    <div className="h-full w-full flex flex-col">
-      {/* Logo / Company Name */}
-      <div className="px-6 py-6 md:py-8 border-b" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <div className="flex items-center gap-3 mb-2">
-          <img src="/indataflow-logo.png" alt="InDataFlow" className="h-[56px] md:h-[67px] w-auto brightness-0 invert" />
-        </div>
-        <p className="text-xs opacity-60" style={{ color: 'var(--sidebar-foreground)' }}>
-          Operations Cockpit
-        </p>
-      </div>
-
+    <div className="flex flex-col min-h-full whitespace-nowrap">
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 md:py-6 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                onPageChange(item.id);
-                onNavigate?.();
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors duration-150"
-              style={{
-                backgroundColor: isActive ? 'var(--sidebar-accent)' : 'transparent',
-                color: 'var(--sidebar-foreground)',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
+      <nav
+        className="flex-1 px-3 py-4 md:py-6"
+        aria-label="Main navigation"
+      >
+        {navGroups.map((group) => (
+          <div key={group.label} className="mb-5">
+            <div
+              className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider sidebar-label"
             >
-              <Icon className="w-4 h-4" strokeWidth={1.5} />
-              <span className="text-sm">{item.label}</span>
-            </button>
-          );
-        })}
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <NavButton
+                  key={item.id}
+                  item={item}
+                  currentPage={currentPage}
+                  onPageChange={onPageChange}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Bottom actions */}
-      <div className="mt-auto">
-        <div
-          className="px-6 py-4 border-t text-xs opacity-50"
-          style={{
-            borderColor: 'var(--sidebar-border)',
-            color: 'var(--sidebar-foreground)',
-          }}
-        >
-          Last updated: {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+      {/* Bottom actions — sticky at bottom */}
+      <div className="sticky bottom-0 border-t" style={{ backgroundColor: 'var(--sidebar)', borderColor: 'var(--sidebar-border)' }}>
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
+          >
+            GL
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate" style={{ color: 'var(--sidebar-foreground)' }}>
+              Internal Dashboard
+            </div>
+            <div className="text-xs truncate" style={{ color: 'var(--sidebar-foreground)', opacity: 0.5 }}>
+              {sessionStore.getId()?.slice(0, 8) ?? '—'}
+            </div>
+          </div>
         </div>
 
         <div className="px-3 pb-4">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors duration-150"
-            style={{
-              color: 'var(--sidebar-foreground)',
-              backgroundColor: 'transparent',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
+            className="sidebar-nav-btn"
           >
             <LogOut className="w-4 h-4" strokeWidth={1.5} />
-            <span className="text-sm">Logout</span>
+            <span className="text-sm" style={{ fontWeight: 400 }}>Logout</span>
           </button>
         </div>
       </div>

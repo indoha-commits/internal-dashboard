@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { deleteOpsClient, getOpsClients } from '@/app/api/ops';
+import { SelectField } from '@/app/components/ui/select-field';
+import { FormField } from '@/app/components/ui/form-field';
+import { Button } from '@/app/components/ui/button';
 
 interface Client {
   id: string;
@@ -71,52 +74,47 @@ export function DeleteClientPage({ onDeleted, onCancel }: DeleteClientPageProps)
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
-        <h1>Delete Client</h1>
-        <p className="text-sm opacity-60 mt-2">
-          Permanently removes the client and all their cargo, documents, and billing records. This action cannot be undone.
+        <h1 className="page-title">Delete Client</h1>
+        <p className="page-desc mt-2">
+          Permanently remove a client and all associated cargo, documents, and billing records.
         </p>
       </div>
 
       <div
-        className="rounded-lg border mb-4 px-4 py-3 flex items-start gap-3"
-        style={{ borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.06)' }}
+        className="alert-warning rounded-lg border mb-4 px-4 py-3 flex items-start gap-3"
       >
-        <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'rgb(239,68,68)' }} />
-        <div className="text-sm" style={{ color: 'rgb(239,68,68)' }}>
+        <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'var(--btn-danger-bg)' }} />
+        <div className="text-sm" style={{ color: 'var(--btn-danger-bg)' }}>
           <strong>Warning:</strong> All cargo shipments, documents, approvals, events, invoices, and subscriptions linked
           to this client will be permanently deleted.
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <div className="bg-card rounded-lg border border-default">
         <form onSubmit={handleDelete} className="p-6 space-y-4">
           {error && (
-            <div className="text-sm rounded px-3 py-2" style={{ color: 'var(--destructive)', backgroundColor: 'rgba(212,24,61,0.07)', border: '1px solid rgba(212,24,61,0.2)' }}>
+            <div className="alert-error text-sm rounded px-3 py-2">
               {error}
             </div>
           )}
           {successMsg && (
-            <div className="flex items-start gap-2 text-sm rounded px-3 py-2" style={{ color: '#10b981', backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <div className="alert-success flex items-start gap-2 text-sm rounded px-3 py-2">
               <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{successMsg} Redirecting…</span>
             </div>
           )}
 
-          {/* Client selector */}
-          <div>
-            <label className="block text-sm opacity-70 mb-1">Select client to delete</label>
+          <FormField label="Select client to delete">
             {loadingClients ? (
-              <div className="text-sm opacity-50">Loading clients…</div>
+              <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Loading clients…</div>
             ) : (
-              <select
+              <SelectField
                 value={selectedId}
                 onChange={(e) => {
                   setSelectedId(e.target.value);
                   setConfirmName('');
                   setError(null);
                 }}
-                className="w-full px-3 py-2 rounded border bg-transparent"
-                style={{ borderColor: 'var(--border)' }}
               >
                 <option value="">— Choose a client —</option>
                 {clients.map((c) => (
@@ -124,45 +122,38 @@ export function DeleteClientPage({ onDeleted, onCancel }: DeleteClientPageProps)
                     {c.name}{c.slug ? ` (${c.slug})` : ''}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             )}
-          </div>
+          </FormField>
 
-          {/* Confirmation input */}
           {selectedClient && (
-            <div>
-              <label className="block text-sm opacity-70 mb-1">
-                Type <strong>{selectedClient.name}</strong> to confirm deletion
-              </label>
+            <FormField label={`Type ${selectedClient.name} to confirm deletion`}>
               <input
                 value={confirmName}
                 onChange={(e) => setConfirmName(e.target.value)}
                 className="w-full px-3 py-2 rounded border bg-transparent"
-                style={{ borderColor: 'rgba(239,68,68,0.5)' }}
+                style={{ borderColor: 'var(--btn-danger)' }}
                 placeholder={selectedClient.name}
                 autoComplete="off"
               />
-            </div>
+            </FormField>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
+            <Button
               onClick={onCancel}
-              className="px-4 py-2 rounded border"
-              style={{ borderColor: 'var(--border)' }}
+              variant="outline"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               disabled={submitting || !selectedId || confirmName.trim().toLowerCase() !== (selectedClient?.name ?? '').trim().toLowerCase()}
               type="submit"
-              className="px-4 py-2 rounded border flex items-center gap-2 disabled:opacity-40"
-              style={{ borderColor: 'rgb(239,68,68)', color: 'rgb(239,68,68)' }}
+              variant="destructive"
             >
               <Trash2 className="w-4 h-4" />
               {submitting ? 'Deleting…' : 'Delete Client'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

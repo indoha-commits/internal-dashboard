@@ -1,108 +1,76 @@
 import { useEffect, useState } from 'react';
-import { initSupabaseAuth, setSessionFromUrlHash } from './supabase';
-import { claimInternalSession, getMe, heartbeatInternalSession } from '../api/ops';
+import { useToast } from '@/app/hooks/useToast';
+import { sessionStore } from './sessionStore';
 
-function requireEnv(name: string): string {
-  const v = (import.meta.env as any)[name] as string | undefined;
-  if (!v) throw new Error(`Missing required env var: ${name}`);
-  return v;
-}
-
-const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
-
-function getOrCreateInternalSessionId(): string {
-  const key = 'internal_session_id';
-  const existing = window.sessionStorage.getItem(key);
-  if (existing) return existing;
-
-  // Prefer an id passed from the auth portal (it already claimed the lock).
-  // The auth portal redirects to /auth/callback#...&internal_session_id=...
-  const hash = window.location.hash;
-  if (hash && hash.startsWith('#')) {
-    const params = new URLSearchParams(hash.slice(1));
-    const fromHash = params.get('internal_session_id');
-    if (fromHash) {
-      window.sessionStorage.setItem(key, fromHash);
-      return fromHash;
-    }
-  }
-
-  const id = crypto.randomUUID();
-  window.sessionStorage.setItem(key, id);
-  return id;
-}
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 export function AuthGateInternal({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [ready, setReady] = useState(USE_MOCK_DATA);
+  const { toast } = useToast();
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    if (USE_MOCK_DATA) return;
+
+    let unsub: (() => void) | undefined;
     let mounted = true;
 
-    const initialize = async () => {
-      // Best-effort: capture access_token from auth callback without redirecting.
-      if (window.location.hash && window.location.hash.includes('access_token=')) {
-        try {
-          await setSessionFromUrlHash();
-          const callbackIndex = window.location.pathname.indexOf('/auth/callback');
-          const nextPath = callbackIndex === -1
-            ? window.location.pathname
-            : window.location.pathname.slice(0, callbackIndex) || '/';
-          // Clear the URL hash containing sensitive tokens for security
-          window.history.replaceState({}, document.title, nextPath);
-          // Also clear the hash immediately
-          window.location.hash = '';
-        } catch (e) {
-          console.warn('Failed to set session from hash', e);
-        }
-      }
-
-      if (!mounted) return;
-
+    (async () => {
       try {
-        unsubscribe = await initSupabaseAuth(async () => {
-          const id = getOrCreateInternalSessionId();
-          setSessionId(id);
-          try {
-            const result = await claimInternalSession(id);
-            if ('ok' in result && !result.ok && result.error === 'session_locked') {
-              alert(result.detail);
-            }
-          } catch (e) {
-            console.warn('Failed to claim internal session', e);
-          }
-        });
-      } catch (e) {
-        console.warn('Failed to initialize Supabase auth', e);
-      } finally {
-        if (mounted) setReady(true);
-      }
-    };
+        const { initSupabaseAuth, setSessionFromUrlHash } = await import('./supabase');
+        const { claimInternalSession, heartbeatInternalSession } = await import('../api/ops');
 
-    void initialize();
+        if (window.location.hash?.includes('access_token=')) {
+          try {
+            await setSessionFromUrlHash();
+            const cb = window.location.pathname.indexOf('/auth/callback');
+            const next = cb === -1 ? window.location.pathname : window.location.pathname.slice(0, cb) || '/';
+            window.history.replaceState({}, document.title, next);
+            window.location.hash = '';
+          } catch (e) {
+            console.warn('Failed to set session from hash', e);
+          }
+        }
+
+        if (!mounted) return;
+
+        try {
+          const existing = sessionStore.getId();
+          const sessionId = existing || crypto.randomUUID();
+          if (!existing) sessionStore.setId(sessionId);
+
+          unsub = await initSupabaseAuth(async () => {
+            try {
+              const result = await claimInternalSession(sessionId);
+              if ('ok' in result && !result.ok && result.error === 'session_locked') {
+                toast({ type: 'error', message: result.detail || 'Session locked by another session' });
+              }
+            } catch (e) {
+              toast({ type: 'warning', message: 'Failed to claim internal session' });
+            }
+          });
+
+          const interval = window.setInterval(() => {
+            void heartbeatInternalSession(sessionId).catch(() =>
+              toast({ type: 'warning', message: 'Heartbeat failed — session may expire' })
+            );
+          }, 5 * 60 * 1000);
+
+          mounted && setReady(true);
+        } catch (e) {
+          toast({ type: 'warning', message: 'Auth init failed' });
+          mounted && setReady(true);
+        }
+      } catch {
+        mounted && setReady(true);
+      }
+    })();
 
     return () => {
       mounted = false;
-      unsubscribe?.();
+      unsub?.();
     };
   }, []);
 
-  useEffect(() => {
-    if (!ready || !sessionId) return;
-
-    const interval = window.setInterval(() => {
-      void heartbeatInternalSession(sessionId).catch((err) =>
-        console.warn('Failed to heartbeat internal session', err)
-      );
-    }, 5 * 60 * 1000);
-
-    return () => window.clearInterval(interval);
-  }, [ready, sessionId]);
-
-  if (!ready) {
-    return null;
-  }
-
+  if (!ready) return null;
   return <>{children}</>;
 }

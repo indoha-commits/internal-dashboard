@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ExternalLink, Loader2, XCircle } from 'lucide-react';
+import { CrossPageStatus } from '@/app/components/CrossPageStatus';
+import { useToast } from '@/app/hooks/useToast';
 import { getSupabase } from '@/app/auth/supabase';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -12,6 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/app/components/ui/dialog';
 import { fetchJson } from '@/app/api/client';
 import { getOpsClients } from '@/app/api/ops';
 
@@ -64,6 +73,7 @@ export function RequestValidationPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [rejectDialog, setRejectDialog] = useState<{ request: RequestRow; reason: string } | null>(null);
@@ -140,7 +150,7 @@ export function RequestValidationPage() {
         } else if (phoneDigits.length >= 9) {
           payload.phone_number = phoneDigits;
         } else {
-          window.alert('Select a client or enter a phone number for this unlinked request.');
+          setError('Select a client or enter a phone number for this unlinked request.');
           setBusy((m) => ({ ...m, [approveDialog.request.id]: false }));
           return;
         }
@@ -170,7 +180,7 @@ export function RequestValidationPage() {
           /* keep raw */
         }
       }
-      window.alert(msg);
+      toast({ type: 'error', message: msg });
     } finally {
       setBusy((m) => ({ ...m, [approveDialog.request.id]: false }));
     }
@@ -195,32 +205,43 @@ export function RequestValidationPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-xl">Validation Requests</h2>
-        <p className="text-sm opacity-60 mt-1">
-          Approve to run Jarvis on the B/L (category, containers, route). You only choose tax pathway; cargo is created automatically.
-          Linked invoices and packing lists then appear under Pending Documents.
+      <div className="mb-8">
+        <h1 className="page-title">Validation Requests</h1>
+        <p className="page-desc mt-2">
+          Approve Jarvis extraction runs on bills of lading. Cargo is created automatically upon approval.
         </p>
       </div>
 
-      <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <CrossPageStatus />
+
+      <div className="bg-card rounded-lg border border-default">
         {loading ? (
-          <div className="px-6 py-8 text-sm opacity-60">Loading…</div>
+          <div className="empty-state">
+            <div className="animate-pulse">
+              <div className="w-6 h-6 rounded-full loading-pulse"></div>
+            </div>
+            <p className="empty-title">Loading requests</p>
+            <p className="empty-sub">Fetching validation requests…</p>
+          </div>
         ) : error ? (
           <div className="px-6 py-8 text-sm" style={{ color: 'var(--destructive)' }}>{error}</div>
         ) : pendingRequests.length === 0 ? (
-          <div className="px-6 py-8 text-sm opacity-60">No pending requests.</div>
+          <div className="empty-state">
+            <CheckCircle2 size={28} color="#1c1d20" />
+            <p className="empty-title">No pending requests</p>
+            <p className="empty-sub">Requests appear here when clients submit them</p>
+          </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          <div className="divide-y border-default">
             {pendingRequests.map((req) => {
               const busyReq = Boolean(busy[req.id]);
               return (
                 <div key={req.id} className="px-6 py-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-1">
-                    <div className="text-sm" style={{ fontWeight: 600 }}>
+                    <div className="text-sm font-semibold">
                       {req.linked ? req.client_name : req.from_number ? `📱 ${req.from_number}` : 'Unknown sender'}
                     </div>
-                    <div className="text-xs opacity-60">
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                       {req.file_name ?? 'Bill of Lading'}
                       {req.bill_of_lading ? ` · B/L ${req.bill_of_lading}` : ''}
                       {req.cargo_id ? ' · cargo linked' : ''}
@@ -230,12 +251,10 @@ export function RequestValidationPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
                       onClick={() => openDocument(req)}
+                      variant="outline"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-4 h-4" />
                       View file
                     </Button>
                     <Button
@@ -258,15 +277,13 @@ export function RequestValidationPage() {
                       <span className="ml-2">Approve (Jarvis)</span>
                     </Button>
                     <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
                       disabled={busyReq}
                       onClick={() => setRejectDialog({ request: req, reason: '' })}
-                      className="border-red-600 text-red-600"
+                      variant="outline"
+                      className="text-destructive border-destructive"
                     >
                       {busyReq ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                      <span className="ml-2">Reject</span>
+                      Reject
                     </Button>
                   </div>
                 </div>
@@ -276,142 +293,134 @@ export function RequestValidationPage() {
         )}
       </div>
 
-      {approveDialog && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-lg" style={{ borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h3 className="text-lg">Approve bill of lading</h3>
-              <p className="text-sm opacity-60 mt-1">
-                Jarvis will read the file, infer category (Electronics / Raw materials / Meds &amp; beverage), containers, and origin → destination.
-                Only tax pathway is required here.
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              {!approveDialog.request.linked && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Client</Label>
-                    <Select
-                      value={approveDialog.selectedClientId}
-                      onValueChange={(v) =>
-                        setApproveDialog({ ...approveDialog, selectedClientId: v })
-                      }
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select existing client…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__new__">+ Enter phone number for new client</SelectItem>
-                        {clients.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {approveDialog.selectedClientId === '__new__' && (
-                    <div className="space-y-2">
-                      <Label>Phone number (new client)</Label>
-                      <Input
-                        type="tel"
-                        value={approveDialog.phoneNumber}
-                        onChange={(e) => setApproveDialog({ ...approveDialog, phoneNumber: e.target.value })}
-                        className="bg-background"
-                        placeholder="e.g. 250788123456"
-                      />
-                      <p className="text-xs opacity-60">A new client will be created with this number. All alerts go here.</p>
-                    </div>
-                  )}
-                  {approveDialog.request.from_number && (
-                    <p className="text-xs opacity-60">Sender: {approveDialog.request.from_number}</p>
-                  )}
-                </>
-              )}
+      <Dialog open={approveDialog !== null} onOpenChange={(open) => { if (!open) setApproveDialog(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Approve bill of lading</DialogTitle>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Jarvis will read the file, infer category (Electronics / Raw materials / Meds &amp; beverage), containers, and origin → destination.
+              Only tax pathway is required here.
+            </p>
+          </DialogHeader>
+          {approveDialog && !approveDialog.request.linked && (
+            <>
               <div className="space-y-2">
-                <Label>Tax payment method</Label>
+                <Label>Client</Label>
                 <Select
-                  value={approveDialog.clearancePathway}
+                  value={approveDialog.selectedClientId}
                   onValueChange={(v) =>
-                    setApproveDialog({
-                      ...approveDialog,
-                      clearancePathway: v === 'T1_TRANSIT' ? 'T1_TRANSIT' : 'PORT_CLEARANCE',
-                    })
+                    setApproveDialog({ ...approveDialog, selectedClientId: v })
                   }
                 >
                   <SelectTrigger className="bg-background">
-                    <SelectValue />
+                    <SelectValue placeholder="Select existing client…" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PORT_CLEARANCE">
-                      Port Clearance — Draft, Assessment, Exit Note
-                    </SelectItem>
-                    <SelectItem value="T1_TRANSIT">T1 Transit — T1 form, Exit Note, IM4</SelectItem>
+                    <SelectItem value="__new__">+ Enter phone number for new client</SelectItem>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Expected arrival (optional)</Label>
-                <Input
-                  type="date"
-                  value={approveDialog.expectedArrival}
-                  onChange={(e) => setApproveDialog({ ...approveDialog, expectedArrival: e.target.value })}
-                  className="bg-background"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Container count if B/L has no ISO numbers (optional)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={approveDialog.containerCount}
-                  onChange={(e) => setApproveDialog({ ...approveDialog, containerCount: e.target.value })}
-                  className="bg-background"
-                  placeholder="e.g. 5 (creates ISO-style placeholders if OCR finds none)"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setApproveDialog(null)}>Cancel</Button>
-                <Button
-                  onClick={handleApprove}
-                  disabled={Boolean(busy[approveDialog.request.id])}
-                  className="bg-green-600 text-white hover:bg-green-700"
-                >
-                  {busy[approveDialog.request.id] ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    'Approve & create cargo'
-                  )}
-                </Button>
-              </div>
-            </div>
+              {approveDialog.selectedClientId === '__new__' && (
+                <div className="space-y-2">
+                  <Label>Phone number (new client)</Label>
+                  <Input
+                    type="tel"
+                    value={approveDialog.phoneNumber}
+                    onChange={(e) => setApproveDialog({ ...approveDialog, phoneNumber: e.target.value })}
+                    className="bg-background"
+                    placeholder="e.g. 250788123456"
+                  />
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>A new client will be created with this number. All alerts go here.</p>
+                </div>
+              )}
+              {approveDialog.request.from_number && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Sender: {approveDialog.request.from_number}</p>
+              )}
+            </>
+          )}
+          <div className="space-y-2">
+            <Label>Tax payment method</Label>
+            <Select
+              value={approveDialog?.clearancePathway}
+              onValueChange={(v) =>
+                setApproveDialog((prev: any) => prev ? {
+                  ...prev,
+                  clearancePathway: v === 'T1_TRANSIT' ? 'T1_TRANSIT' : 'PORT_CLEARANCE',
+                } : prev)
+              }
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PORT_CLEARANCE">
+                  Port Clearance — Draft, Assessment, Exit Note
+                </SelectItem>
+                <SelectItem value="T1_TRANSIT">T1 Transit — T1 form, Exit Note, IM4</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      )}
+          <div className="space-y-2">
+            <Label>Expected arrival (optional)</Label>
+            <Input
+              type="date"
+              value={approveDialog?.expectedArrival ?? ''}
+              onChange={(e) => setApproveDialog((prev: any) => prev ? { ...prev, expectedArrival: e.target.value } : prev)}
+              className="bg-background"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Container count if B/L has no ISO numbers (optional)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={50}
+              value={approveDialog?.containerCount ?? ''}
+              onChange={(e) => setApproveDialog((prev: any) => prev ? { ...prev, containerCount: e.target.value } : prev)}
+              className="bg-background"
+              placeholder="e.g. 5 (creates ISO-style placeholders if OCR finds none)"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setApproveDialog(null)} variant="outline">Cancel</Button>
+            <Button
+              onClick={handleApprove}
+              disabled={approveDialog ? Boolean(busy[approveDialog.request.id]) : true}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {approveDialog && busy[approveDialog.request.id] ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Approve & create cargo'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {rejectDialog && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-6" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-lg" style={{ borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h3 className="text-lg">Reject request</h3>
-              <p className="text-sm opacity-60">
-                Provide a reason for rejection. Uploaded {new Date(rejectDialog.request.created_at).toLocaleString()}.
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <Input
-                value={rejectDialog.reason}
-                onChange={(e) => setRejectDialog({ ...rejectDialog, reason: e.target.value })}
-                placeholder="Reason"
-                className="bg-background text-foreground"
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setRejectDialog(null)}>Cancel</Button>
-                <Button onClick={handleReject} disabled={!rejectDialog.reason.trim()}>Reject</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={rejectDialog !== null} onOpenChange={(open) => { if (!open) setRejectDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject request</DialogTitle>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {rejectDialog ? `Provide a reason for rejection. Uploaded ${new Date(rejectDialog.request.created_at).toLocaleString()}.` : ''}
+            </p>
+          </DialogHeader>
+          <Input
+            value={rejectDialog?.reason ?? ''}
+            onChange={(e) => setRejectDialog((prev: any) => prev ? { ...prev, reason: e.target.value } : prev)}
+            placeholder="Reason"
+            className="bg-background text-foreground"
+          />
+          <DialogFooter>
+            <Button onClick={() => setRejectDialog(null)} variant="outline">Cancel</Button>
+            <Button onClick={handleReject} disabled={!rejectDialog?.reason.trim()} variant="destructive">Reject</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import { addOpsClientUser, getOpsClients } from '@/app/api/ops';
+import { SelectField } from '@/app/components/ui/select-field';
+import { FormField } from '@/app/components/ui/form-field';
+import { Button } from '@/app/components/ui/button';
 
 interface Client {
   id: string;
@@ -57,36 +60,32 @@ export function AddClientUserPage({ onDone, onCancel }: AddClientUserPageProps) 
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
-        <h1>Add Client User</h1>
-        <p className="text-sm opacity-60 mt-2">
-          Create a new login credential for an existing client company. Multiple users can share the same client dashboard.
+        <h1 className="page-title">Add Client User</h1>
+        <p className="page-desc mt-2">
+          Create an additional login credential for an existing client company.
         </p>
       </div>
 
-      <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <div className="bg-card rounded-lg border border-default">
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="text-sm rounded px-3 py-2" style={{ color: 'var(--destructive)', backgroundColor: 'rgba(212,24,61,0.07)', border: '1px solid rgba(212,24,61,0.2)' }}>
+            <div className="alert-error">
               {error}
             </div>
           )}
           {success && (
-            <div className="text-sm rounded px-3 py-2" style={{ color: '#10b981', backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <div className="alert-success">
               {success}
             </div>
           )}
 
-          {/* Client selector */}
-          <div>
-            <label className="block text-sm font-medium opacity-70 mb-1">Client Company</label>
+          <FormField label="Client Company">
             {loadingClients ? (
-              <div className="text-sm opacity-50">Loading clients…</div>
+              <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Loading clients…</div>
             ) : (
-              <select
+              <SelectField
                 value={selectedId}
                 onChange={(e) => { setSelectedId(e.target.value); setError(null); }}
-                className="w-full px-3 py-2 rounded border bg-transparent"
-                style={{ borderColor: 'var(--border)' }}
               >
                 <option value="">— Choose a client —</option>
                 {clients.map((c) => (
@@ -94,34 +93,28 @@ export function AddClientUserPage({ onDone, onCancel }: AddClientUserPageProps) 
                     {c.name}{c.slug ? ` (${c.slug})` : ''}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             )}
-          </div>
+          </FormField>
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium opacity-70 mb-1">Email address</label>
+          <FormField label="Email address">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded border bg-transparent"
-              style={{ borderColor: 'var(--border)' }}
+              className="form-input"
               placeholder="user@company.com"
               autoComplete="off"
             />
-          </div>
+          </FormField>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-medium opacity-70 mb-1">Temporary Password</label>
+          <FormField label="Temporary Password" hint="Share this password with the client — they can change it after first login.">
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 pr-10 rounded border bg-transparent"
-                style={{ borderColor: 'var(--border)' }}
+                className="form-input pr-10"
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
               />
@@ -133,29 +126,22 @@ export function AddClientUserPage({ onDone, onCancel }: AddClientUserPageProps) 
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <div className="text-xs opacity-50 mt-1">
-              Share this password with the client — they can change it after first login.
-            </div>
-          </div>
+          </FormField>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
+            <Button
               onClick={onCancel}
-              className="px-4 py-2 rounded border"
-              style={{ borderColor: 'var(--border)' }}
+              variant="outline"
             >
               {success ? 'Done' : 'Cancel'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 rounded border flex items-center gap-2 disabled:opacity-40"
-              style={{ borderColor: 'var(--gold-accent)', color: 'var(--gold-accent)' }}
             >
               <UserPlus className="w-4 h-4" />
               {submitting ? 'Creating…' : 'Add User'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -1,4 +1,5 @@
-import { ExternalLink, Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { CrossPageStatus } from '@/app/components/CrossPageStatus';
+import { ChevronRight, CopyPlus, ExternalLink, Package, Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createOpsCargo,
@@ -10,6 +11,15 @@ import {
   type OpsCargoRegistryResponse,
 } from '@/app/api/ops';
 import { formatLabel, requiredDocsForCategory, type CargoCategory } from '@/app/api/categories';
+import { SelectField } from '@/app/components/ui/select-field';
+import { Button } from '@/app/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/app/components/ui/dialog';
 
 interface CargoRegistryPageProps {
   onViewTimeline: (cargoId: string) => void;
@@ -70,6 +80,44 @@ export function CargoRegistryPage({
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingBulk, setSubmittingBulk] = useState(false);
+  const [newCargoStep, setNewCargoStep] = useState(1);
+  const [bulkCargoStep, setBulkCargoStep] = useState(1);
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  const resetNewCargo = () => {
+    setShowNewCargo(false);
+    setNewCargoStep(1);
+    setStepError(null);
+  };
+
+  const resetBulkCargo = () => {
+    setShowBulkCargo(false);
+    setBulkCargoStep(1);
+    setStepError(null);
+  };
+
+  const handleNextNewCargoStep = () => {
+    setStepError(null);
+    if (newCargoStep === 1) {
+      if (!form.client_id) { setStepError('Please select a client'); return; }
+    } else if (newCargoStep === 2) {
+      if (!form.container_id.trim()) { setStepError('Please enter a container ID'); return; }
+      if (!form.expected_arrival_date) { setStepError('Please select expected arrival date'); return; }
+    }
+    setNewCargoStep((s) => Math.min(s + 1, 3));
+  };
+
+  const handleNextBulkCargoStep = () => {
+    setStepError(null);
+    if (bulkCargoStep === 1) {
+      if (!bulkForm.client_id) { setStepError('Please select a client'); return; }
+    } else if (bulkCargoStep === 2) {
+      if (!bulkForm.bill_of_lading.trim()) { setStepError('Please enter a bill of lading'); return; }
+      if (!bulkForm.expected_arrival_date) { setStepError('Please select expected arrival date'); return; }
+    }
+    setBulkCargoStep((s) => Math.min(s + 1, 3));
+  };
 
   // Destructive delete confirmation (GitHub/Cloudflare-style)
   const [deleteTarget, setDeleteTarget] = useState<{ cargoId: string; clientName: string } | null>(null);
@@ -206,6 +254,8 @@ export function CargoRegistryPage({
 
     (async () => {
       await reloadClients();
+      setNewCargoStep(1);
+      setStepError(null);
       setShowNewCargo(true);
       setForm((f) => ({ ...f, client_id: autoOpenNewCargoWithClient.id }));
       onAutoOpenConsumed?.();
@@ -254,12 +304,16 @@ export function CargoRegistryPage({
   };
 
   const openNewCargo = async () => {
+    setNewCargoStep(1);
+    setStepError(null);
     setShowNewCargo(true);
     if (clients.length) return;
     await reloadClients();
   };
 
   const openBulkCargo = async () => {
+    setBulkCargoStep(1);
+    setStepError(null);
     setShowBulkCargo(true);
     if (clients.length) return;
     await reloadClients();
@@ -333,19 +387,19 @@ export function CargoRegistryPage({
     }
   };
 
-  const submitNewCargo = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitNewCargo = async () => {
+    setStepError(null);
 
     if (!form.client_id) {
-      alert('Please select a client');
+      setStepError('Please select a client');
       return;
     }
     if (!form.container_id.trim()) {
-      alert('Please enter a container id');
+      setStepError('Please enter a container id');
       return;
     }
     if (!form.expected_arrival_date) {
-      alert('Please select expected arrival date');
+      setStepError('Please select expected arrival date');
       return;
     }
 
@@ -365,7 +419,7 @@ export function CargoRegistryPage({
         destination: form.destination.trim() || null,
         origin: form.origin.trim() || null,
       });
-      setShowNewCargo(false);
+      resetNewCargo();
       setForm({
         client_id: '',
         container_id: '',
@@ -378,31 +432,31 @@ export function CargoRegistryPage({
       });
       await refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      setStepError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const submitBulkCargo = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitBulkCargo = async () => {
+    setStepError(null);
 
     if (!bulkForm.client_id) {
-      alert('Please select a client');
+      setStepError('Please select a client');
       return;
     }
     if (!bulkForm.bill_of_lading.trim()) {
-      alert('Please enter a container group ID');
+      setStepError('Please enter a container group ID');
       return;
     }
     if (!bulkForm.expected_arrival_date) {
-      alert('Please select expected arrival date');
+      setStepError('Please select expected arrival date');
       return;
     }
 
     const required_documents = requiredDocsForCategory(bulkForm.category, bulkForm.clearance_pathway);
 
-    setSubmitting(true);
+    setSubmittingBulk(true);
     try {
       await createOpsCargoBulk({
         client_id: bulkForm.client_id,
@@ -415,7 +469,7 @@ export function CargoRegistryPage({
         destination: bulkForm.destination.trim() || null,
         origin: bulkForm.origin.trim() || null,
       });
-      setShowBulkCargo(false);
+      resetBulkCargo();
       setBulkForm({
         client_id: '',
         bill_of_lading: '',
@@ -428,9 +482,9 @@ export function CargoRegistryPage({
       });
       await refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      setStepError(e instanceof Error ? e.message : String(e));
     } finally {
-      setSubmitting(false);
+      setSubmittingBulk(false);
     }
   };
 
@@ -441,74 +495,65 @@ export function CargoRegistryPage({
   return (
     <div className="min-h-screen w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
-        <div>
-          <h1>Cargo Registry</h1>
-          <p className="text-sm opacity-60 mt-2">All cargos across clients (ops). “Create New Cargo” creates a single container.</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+        <div className="flex-1">
+          <h1 className="page-title">Cargo Registry</h1>
+          <p className="page-desc mt-2">All client cargos. Create single or bulk containers and manage client accounts.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <button
-            onClick={openNewCargo}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
-            style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-          >
+        <div className="flex flex-wrap gap-2 sm:flex-shrink-0">
+          <Button onClick={openNewCargo} className="inline-flex items-center justify-center gap-2">
             <Plus className="w-4 h-4" />
             New Cargo
-          </button>
-          <button
-            onClick={openBulkCargo}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
-            style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-          >
-            <Plus className="w-4 h-4" />
+          </Button>
+          <Button onClick={openBulkCargo} variant="outline">
+            <CopyPlus className="w-4 h-4" />
             Bulk Create
-          </button>
-          <button
-            onClick={onAddClientUser}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
-            style={{ borderColor: 'var(--gold-accent)', color: 'var(--gold-accent)' }}
-          >
+          </Button>
+          <Button onClick={onAddClientUser} variant="outline">
             <UserPlus className="w-4 h-4" />
             Add User
-          </button>
-          <button
-            onClick={onDeleteClient}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded border"
-            style={{ borderColor: 'rgb(239,68,68)', color: 'rgb(239,68,68)' }}
-          >
+          </Button>
+          <Button onClick={onDeleteClient} variant="destructive">
             <Trash2 className="w-4 h-4" />
             Delete Client
-          </button>
+          </Button>
         </div>
       </div>
 
+      <CrossPageStatus />
+
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+        <label className="sr-only" htmlFor="search-registry">Search cargo registry</label>
+        <div className="flex-1 search-bar">
+          <Search className="w-4 h-4" />
           <input
+            id="search-registry"
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by client or cargo id"
-            className="w-full pl-10 pr-4 py-2.5 rounded border bg-transparent"
-            style={{ borderColor: 'var(--border)' }}
+            aria-label="Search cargo registry"
           />
         </div>
-        <div className="text-sm opacity-60 sm:whitespace-nowrap">{totalCargos} containers • {grouped.length} groups</div>
+        <div className="text-sm body-text sm:whitespace-nowrap">{totalCargos} containers • {grouped.length} groups</div>
       </div>
 
-      <div className="bg-card rounded-lg border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+      <div className="bg-card rounded-lg border overflow-hidden border-default">
         {loading ? (
-          <div className="px-4 sm:px-6 py-8 text-sm opacity-60">Loading…</div>
+          <div className="px-4 sm:px-6 py-8 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading…</div>
         ) : error ? (
           <div className="px-4 sm:px-6 py-8 text-sm" style={{ color: 'var(--destructive)' }}>
             {error}
           </div>
         ) : grouped.length === 0 ? (
-          <div className="px-4 sm:px-6 py-8 text-sm opacity-60">No cargos found.</div>
+          <div className="empty-state">
+            <Package size={28} color="#1c1d20" />
+            <p className="empty-title">No cargos found</p>
+            <p className="empty-sub">Create a new cargo to get started</p>
+          </div>
         ) : (
-          <div className="divide-y overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
+          <div className="divide-y overflow-x-auto border-default">
             {grouped.map((group) => {
               const open = expandedGroups.has(group.billOfLading);
 
@@ -519,14 +564,14 @@ export function CargoRegistryPage({
                     className="w-full px-4 sm:px-6 py-4 flex items-center justify-between hover:bg-muted/20 transition-colors"
                   >
                     <div className="text-left min-w-0 flex-1">
-                      <div className="text-sm truncate" style={{ fontWeight: 600 }}>
+                      <div className="text-sm truncate font-semibold">
                         {group.billOfLading}
                       </div>
-                      <div className="text-xs opacity-60 mt-1 truncate">
+                      <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>
                         {group.clientName} • {group.cargos.length} containers
                       </div>
                     </div>
-                    <div className="text-sm opacity-60 ml-4 flex-shrink-0">{open ? '−' : '+'}</div>
+                    <div className="text-sm ml-4 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>{open ? '−' : '+'}</div>
                   </button>
 
                   {open && (
@@ -536,85 +581,82 @@ export function CargoRegistryPage({
                         {group.cargos.map((c) => (
                           <div
                             key={c.cargoId}
-                            className="rounded-lg border p-3 sm:p-4"
-                            style={{ borderColor: 'var(--border)' }}
+                            className="rounded-lg border p-3 sm:p-4 border-default"
                           >
                             <div className="min-w-0">
                               <div className="font-mono text-sm sm:text-base" style={{ color: 'var(--primary)' }}>
                                 {c.cargoId}
                               </div>
-                              <div className="text-xs opacity-60 mt-1">Last update {formatTimestamp(c.latestEventTime)}</div>
-                              <div className="text-xs opacity-60 mt-1">Stage: {formatEvent(c.latestEvent)}</div>
+                              <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Last update {formatTimestamp(c.latestEventTime)}</div>
+                              <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Stage: {formatEvent(c.latestEvent)}</div>
                             </div>
 
                             <div className="mt-3 grid grid-cols-1 gap-2">
-                              <button
+                              <Button
                                 onClick={() => onViewTimeline(c.cargoId)}
-                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                                variant="outline"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 View timeline
-                              </button>
+                              </Button>
 
-                              <button
+                              <Button
                                 onClick={() => openDeleteCargo(c.cargoId, group.clientName)}
-                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                variant="outline"
+                                className="text-destructive border-destructive"
                               >
                                 Remove container
-                              </button>
+                              </Button>
 
-                              <button
+                              <Button
                                 onClick={() => openDeleteCargoGroup(group.billOfLading, group.clientName)}
-                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                variant="outline"
+                                className="text-destructive border-destructive"
                               >
                                 Remove container group
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ))}
                       </div>
 
                       {/* Tablet/Desktop: dense list */}
-                      <div className="hidden sm:block rounded border" style={{ borderColor: 'var(--border)' }}>
-                        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                      <div className="hidden sm:block rounded border border-default">
+                        <div className="divide-y border-default">
                           {group.cargos.map((c) => (
                             <div key={c.cargoId} className="px-4 py-3 flex items-center justify-between gap-4">
                               <div>
                                 <div className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
                                   {c.cargoId}
                                 </div>
-                                <div className="text-xs opacity-60 mt-1">Last update {formatTimestamp(c.latestEventTime)}</div>
-                                <div className="text-xs opacity-60 mt-1">Stage: {formatEvent(c.latestEvent)}</div>
+                                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Last update {formatTimestamp(c.latestEventTime)}</div>
+                                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Stage: {formatEvent(c.latestEvent)}</div>
                               </div>
 
                               <div className="flex items-center gap-2">
-                                <button
+                                <Button
                                   onClick={() => onViewTimeline(c.cargoId)}
-                                  className="inline-flex items-center gap-2 px-3 py-2 rounded border text-sm"
-                                  style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                                  variant="outline"
                                 >
                                   <ExternalLink className="w-4 h-4" />
                                   View timeline
-                                </button>
+                                </Button>
 
-                                <button
+                                <Button
                                   onClick={() => openDeleteCargo(c.cargoId, group.clientName)}
-                                  className="inline-flex items-center gap-2 px-3 py-2 rounded border text-sm"
-                                  style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                  variant="outline"
+                                  className="text-destructive border-destructive"
                                 >
                                   Remove container
-                                </button>
+                                </Button>
 
-                                <button
+                                <Button
                                   onClick={() => openDeleteCargoGroup(group.billOfLading, group.clientName)}
-                                  className="inline-flex items-center gap-2 px-3 py-2 rounded border text-sm"
-                                  style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                  variant="outline"
+                                  className="text-destructive border-destructive"
                                 >
                                   Remove container group
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -629,536 +671,563 @@ export function CargoRegistryPage({
         )}
       </div>
 
-      {/* Delete Cargo Confirmation (destructive) */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-2xl my-auto" style={{ borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--destructive)' }}>
-                  Delete container
-                </h2>
-                <p className="text-sm opacity-70 mt-1">
-                  This will permanently delete <span className="font-mono">{deleteTarget.cargoId}</span> from Supabase and remove its
-                  Google Drive folder.
-                </p>
-              </div>
-              <button onClick={closeDeleteCargo} className="p-2 rounded border" style={{ borderColor: 'var(--border)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) closeDeleteCargo(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete container</DialogTitle>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Permanently delete <span className="font-mono text-xs">{deleteTarget?.cargoId}</span> and all associated data.
+            </p>
+          </DialogHeader>
 
-            <div className="p-6 space-y-4">
-              <div className="rounded border p-4" style={{ borderColor: 'var(--destructive)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                <div className="text-sm" style={{ fontWeight: 600, color: 'var(--destructive)' }}>
-                  Warning
-                </div>
-                <div className="text-sm opacity-80 mt-1">
-                  This action cannot be undone. It will delete:
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>All cargo records (events, documents, approvals) in Supabase</li>
-                    <li>Related bucket objects (best-effort)</li>
-                    <li>The cargo folder in Google Drive (best-effort)</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">
-                  To confirm, type <span className="font-mono">{deleteTarget.cargoId}</span>
-                </label>
-                <input
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  className="w-full px-3 py-2 rounded border bg-transparent font-mono"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder={deleteTarget.cargoId}
-                  disabled={deleteSubmitting}
-                />
-              </div>
-
-              {deleteError && (
-                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
-                  {deleteError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeDeleteCargo}
-                  className="px-4 py-2 rounded border"
-                  style={{ borderColor: 'var(--border)' }}
-                  disabled={deleteSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteCargo}
-                  className="px-4 py-2 rounded border disabled:opacity-60"
-                  style={{ borderColor: 'var(--destructive)', color: 'white', backgroundColor: 'var(--destructive)' }}
-                  disabled={deleteSubmitting || deleteConfirmText.trim() !== deleteTarget.cargoId}
-                >
-                  {deleteSubmitting ? 'Deleting…' : 'I understand, delete this container'}
-                </button>
-              </div>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--destructive)', background: 'rgba(239, 68, 68, 0.05)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--destructive)' }}>Warning</div>
+            <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              This action cannot be undone. It will delete:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>All cargo records (events, documents, approvals) in Supabase</li>
+                <li>Related bucket objects (best-effort)</li>
+                <li>The cargo folder in Google Drive (best-effort)</li>
+              </ul>
             </div>
           </div>
-        </div>
-      )}
 
-      {deleteGroupTarget && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 overflow-y-auto" style={{ backgroundColor: 'rgba(11, 28, 45, 0.85)' }}>
-          <div className="bg-card rounded-lg border w-full max-w-2xl my-auto" style={{ borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--destructive)' }}>
-                  Delete container group
-                </h2>
-                <p className="text-sm opacity-70 mt-1">
-                  This will permanently delete all containers in <span className="font-mono">{deleteGroupTarget.billOfLading}</span>.
-                </p>
-              </div>
-              <button onClick={closeDeleteCargoGroup} className="p-2 rounded border" style={{ borderColor: 'var(--border)' }}>
-                <X className="w-4 h-4" />
-              </button>
+          <div>
+            <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
+              To confirm, type <span className="font-mono">{deleteTarget?.cargoId}</span>
+            </label>
+            <input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="form-input"
+              placeholder={deleteTarget?.cargoId}
+              disabled={deleteSubmitting}
+            />
+          </div>
+
+          {deleteError && (
+            <div className="text-xs px-3 py-2 rounded-md" style={{ color: 'var(--destructive)', background: 'rgba(239,68,68,0.05)' }}>
+              {deleteError}
             </div>
+          )}
 
-            <div className="p-6 space-y-4">
-              <div className="rounded border p-4" style={{ borderColor: 'var(--destructive)', background: 'rgba(239, 68, 68, 0.05)' }}>
-                <div className="text-sm" style={{ fontWeight: 600, color: 'var(--destructive)' }}>
-                  Warning
-                </div>
-                <div className="text-sm opacity-80 mt-1">
-                  This action cannot be undone. It will delete every container in the group.
-                </div>
-              </div>
+          <DialogFooter>
+            <Button onClick={closeDeleteCargo} variant="outline" disabled={deleteSubmitting}>Cancel</Button>
+            <Button
+              onClick={confirmDeleteCargo}
+              variant="destructive"
+              disabled={deleteSubmitting || deleteConfirmText.trim() !== deleteTarget?.cargoId}
+            >
+              {deleteSubmitting ? 'Deleting…' : 'Delete container'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">
-                  To confirm, type <span className="font-mono">{deleteGroupTarget.billOfLading}</span>
-                </label>
-                <input
-                  value={deleteGroupConfirmText}
-                  onChange={(e) => setDeleteGroupConfirmText(e.target.value)}
-                  className="w-full px-3 py-2 rounded border bg-transparent font-mono"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder={deleteGroupTarget.billOfLading}
-                  disabled={deleteGroupSubmitting}
-                />
-              </div>
+      <Dialog open={deleteGroupTarget !== null} onOpenChange={(open) => { if (!open) closeDeleteCargoGroup(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete container group</DialogTitle>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Permanently delete all containers in <span className="font-mono text-xs">{deleteGroupTarget?.billOfLading}</span>.
+            </p>
+          </DialogHeader>
 
-              {deleteGroupError && (
-                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
-                  {deleteGroupError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeDeleteCargoGroup}
-                  className="px-4 py-2 rounded border"
-                  style={{ borderColor: 'var(--border)' }}
-                  disabled={deleteGroupSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteCargoGroup}
-                  className="px-4 py-2 rounded border disabled:opacity-60"
-                  style={{ borderColor: 'var(--destructive)', color: 'white', backgroundColor: 'var(--destructive)' }}
-                  disabled={deleteGroupSubmitting || deleteGroupConfirmText.trim() !== deleteGroupTarget.billOfLading}
-                >
-                  {deleteGroupSubmitting ? 'Deleting…' : 'I understand, delete this group'}
-                </button>
-              </div>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--destructive)', background: 'rgba(239, 68, 68, 0.05)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--destructive)' }}>Warning</div>
+            <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              This action cannot be undone. It will delete every container in the group.
             </div>
           </div>
-        </div>
-      )}
 
-      {/* New Cargo Modal */}
-      {showNewCargo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-          style={{ backgroundColor: 'rgba(11, 28, 45, 0.8)' }}
-          onClick={() => setShowNewCargo(false)}
-        >
-          <div
-            className="bg-card rounded-lg border w-full max-w-xl my-auto max-h-[90vh] overflow-y-auto"
-            style={{ borderColor: 'var(--border)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)' }}>
-                  Create New Cargo
-                </h2>
-                <p className="text-sm opacity-60 mt-1">Creates cargo + required docs placeholders via backend.</p>
-              </div>
-              <button
-                onClick={() => setShowNewCargo(false)}
-                className="p-2 rounded border"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <X className="w-4 h-4" />
-              </button>
+          <div>
+            <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
+              To confirm, type <span className="font-mono">{deleteGroupTarget?.billOfLading}</span>
+            </label>
+            <input
+              value={deleteGroupConfirmText}
+              onChange={(e) => setDeleteGroupConfirmText(e.target.value)}
+              className="form-input"
+              placeholder={deleteGroupTarget?.billOfLading}
+              disabled={deleteGroupSubmitting}
+            />
+          </div>
+
+          {deleteGroupError && (
+            <div className="text-xs px-3 py-2 rounded-md" style={{ color: 'var(--destructive)', background: 'rgba(239,68,68,0.05)' }}>
+              {deleteGroupError}
             </div>
+          )}
 
-            <form onSubmit={submitNewCargo} className="p-6 space-y-4">
-              {clientsError && (
-                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
-                  {clientsError}
-                </div>
-              )}
+          <DialogFooter>
+            <Button onClick={closeDeleteCargoGroup} variant="outline" disabled={deleteGroupSubmitting}>Cancel</Button>
+            <Button
+              onClick={confirmDeleteCargoGroup}
+              variant="destructive"
+              disabled={deleteGroupSubmitting || deleteGroupConfirmText.trim() !== deleteGroupTarget?.billOfLading}
+            >
+              {deleteGroupSubmitting ? 'Deleting…' : 'Delete group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Client</label>
-                <select
-                  value={form.client_id}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '__add_new_client__') {
-                      onCreateClient();
-                      return;
-                    }
-                    setForm((f) => ({ ...f, client_id: v }));
+      <Dialog open={showNewCargo} onOpenChange={(open) => { if (!open) resetNewCargo(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create New Cargo</DialogTitle>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Register a new container in the system</p>
+          </DialogHeader>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center gap-2 flex-1">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: newCargoStep >= step ? 'var(--primary)' : 'var(--border)',
+                    color: newCargoStep >= step ? 'white' : 'var(--text-secondary)',
                   }}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  disabled={clientsLoading}
                 >
-                  <option value="">Select client…</option>
-                  <option value="__add_new_client__">+ Add new client…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {clientsLoading && <div className="text-xs opacity-60 mt-1">Loading clients…</div>}
+                  {step}
+                </div>
+                <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
+                  {step === 1 ? 'Type' : step === 2 ? 'Details' : 'Review'}
+                </span>
+                {step < 3 && (
+                  <div
+                    className="flex-1 h-px mx-1 transition-colors"
+                    style={{ backgroundColor: newCargoStep > step ? 'var(--primary)' : 'var(--border)' }}
+                  />
+                )}
               </div>
+            ))}
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
+          {/* Step content */}
+          <div>
+            {(stepError || clientsError) && (
+              <div className="mb-4 text-xs px-3 py-2 rounded border" style={{ color: 'var(--destructive)', borderColor: 'var(--destructive)', background: 'rgba(239,68,68,0.05)' }}>
+                {stepError || clientsError}
+              </div>
+            )}
+
+            {/* Step 1: Client & Cargo Type */}
+            {newCargoStep === 1 && (
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm opacity-70 mb-1">Category</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as CargoCategory }))}
-                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                    style={{ borderColor: 'var(--border)' }}
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Client</label>
+                  <SelectField
+                    value={form.client_id}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__add_new_client__') { onCreateClient(); return; }
+                      setForm((f) => ({ ...f, client_id: v }));
+                    }}
+                    disabled={clientsLoading}
                   >
-                    <option value="ELECTRONICS">Electronics</option>
-                    <option value="RAW_MATERIALS">Raw Materials</option>
-                    <option value="MEDS_BEVERAGE">Meds & Beverage</option>
-                  </select>
+                    <option value="">Select client…</option>
+                    <option value="__add_new_client__">+ Add new client…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </SelectField>
+                  {clientsLoading && <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Loading clients…</div>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Category</label>
+                    <SelectField
+                      value={form.category}
+                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as CargoCategory }))}
+                    >
+                      <option value="ELECTRONICS">Electronics</option>
+                      <option value="RAW_MATERIALS">Raw Materials</option>
+                      <option value="MEDS_BEVERAGE">Meds & Beverage</option>
+                    </SelectField>
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Container Count</label>
+                    <input
+                      type="number" min={1}
+                      value={form.container_count}
+                      onChange={(e) => setForm((f) => ({ ...f, container_count: Number(e.target.value) || 1 }))}
+                      className="form-input"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm opacity-70 mb-1">Container Count</label>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Tax Payment Method</label>
+                  <SelectField
+                    value={form.clearance_pathway}
+                    onChange={(e) => setForm((f) => ({ ...f, clearance_pathway: e.target.value as any }))}
+                  >
+                    <option value="PORT_CLEARANCE">Port Clearance (Pay Tax at Port)</option>
+                    <option value="T1_TRANSIT">T1 Transit (Pay Tax After Transport)</option>
+                  </SelectField>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {form.clearance_pathway === 'PORT_CLEARANCE'
+                      ? 'Requires: Draft, Assessment, Exit Note'
+                      : 'Requires: T1 Form, IM8 Form, Exit Note'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Container Details */}
+            {newCargoStep === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Container ID</label>
                   <input
-                    type="number"
-                    min={1}
-                    value={form.container_count}
-                    onChange={(e) => setForm((f) => ({ ...f, container_count: Number(e.target.value) || 1 }))}
-                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                    style={{ borderColor: 'var(--border)' }}
+                    value={form.container_id}
+                    onChange={(e) => setForm((f) => ({ ...f, container_id: e.target.value }))}
+                    className="form-input"
+                    placeholder="e.g., CONTAINER-2024-001"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Tax Payment Method</label>
-                <select
-                  value={form.clearance_pathway}
-                  onChange={(e) => setForm((f) => ({ ...f, clearance_pathway: e.target.value as any }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  <option value="PORT_CLEARANCE">Port Clearance (Pay Tax at Port)</option>
-                  <option value="T1_TRANSIT">T1 Transit (Pay Tax After Transport)</option>
-                </select>
-                <p className="text-xs opacity-60 mt-1">
-                  {form.clearance_pathway === 'PORT_CLEARANCE' 
-                    ? 'Requires: Draft, Assessment, Exit Note' 
-                    : 'Requires: T1 Form, IM8 Form, Exit Note'}
-                </p>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Origin</label>
+                    <input
+                      value={form.origin}
+                      onChange={(e) => setForm((f) => ({ ...f, origin: e.target.value }))}
+                      className="form-input"
+                      placeholder="e.g., Mombasa, KN"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Destination</label>
+                    <input
+                      value={form.destination}
+                      onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
+                      className="form-input"
+                      placeholder="e.g., Kigali, RW"
+                    />
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Container ID</label>
-                <input
-                  value={form.container_id}
-                  onChange={(e) => setForm((f) => ({ ...f, container_id: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., CONTAINER-2024-001"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Origin</label>
-                <input
-                  value={form.origin}
-                  onChange={(e) => setForm((f) => ({ ...f, origin: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., Mombasa, KN"
-                />
-                <div className="mt-2 text-xs text-muted-foreground">
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   Route: {form.origin || 'Origin'} → {form.destination || 'Destination'}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Destination</label>
-                <input
-                  value={form.destination}
-                  onChange={(e) => setForm((f) => ({ ...f, destination: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., Kigali, RW"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Expected Arrival Date</label>
+                  <input
+                    type="date"
+                    value={form.expected_arrival_date}
+                    onChange={(e) => setForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
+                    className="form-input date-white-icon"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Expected Arrival Date</label>
-                <input
-                  type="date"
-                  value={form.expected_arrival_date}
-                  onChange={(e) => setForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground date-white-icon"
-                  style={{ borderColor: 'var(--border)' }}
-                />
+                <div>
+                  <div className="text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Required Documents</div>
+                  <div className="flex flex-wrap gap-2">
+                    {requiredDocsForCategory(form.category)
+                      .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
+                      .map(formatLabel)
+                      .filter((label) => !['WH7', 'Exit Note', 'Exit note'].includes(label))
+                      .map((label) => (
+                        <span key={label} className="text-xs px-2.5 py-1 rounded-md border border-default" style={{ color: 'var(--text-secondary)' }}>
+                          {label}
+                        </span>
+                      ))}
+                  </div>
+                </div>
               </div>
+            )}
 
-              <div>
-                <div className="text-sm opacity-70 mb-1">Required documents (auto)</div>
-                <div className="text-xs text-muted-foreground">
+            {/* Step 3: Review & Submit */}
+            {newCargoStep === 3 && (
+              <div className="rounded-lg border border-default p-4 space-y-3">
+                {[
+                  ['Client', clients.find((c) => c.id === form.client_id)?.name ?? form.client_id],
+                  ['Category', formatLabel(form.category)],
+                  ['Container Count', String(form.container_count)],
+                  ['Tax Method', form.clearance_pathway === 'PORT_CLEARANCE' ? 'Port Clearance' : 'T1 Transit'],
+                  ['Container ID', form.container_id],
+                  ['Origin', form.origin || '—'],
+                  ['Destination', form.destination || '—'],
+                  ['Expected Arrival', form.expected_arrival_date || '—'],
+                ].map(([label, value], i) => (
+                  <div key={label} className={i > 0 ? 'border-t border-default pt-3 flex justify-between text-sm' : 'flex justify-between text-sm'}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                    <span className="font-medium">{value}</span>
+                  </div>
+                ))}
+                <div className="border-t border-default pt-3 flex flex-wrap gap-1.5">
+                  <span className="text-xs w-full" style={{ color: 'var(--text-secondary)' }}>Required Documents</span>
                   {requiredDocsForCategory(form.category)
                     .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
                     .map(formatLabel)
                     .filter((label) => !['WH7', 'Exit Note', 'Exit note'].includes(label))
-                    .join(', ')}
+                    .map((label) => (
+                      <span key={label} className="text-xs px-2 py-0.5 rounded border border-default">{label}</span>
+                    ))}
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewCargo(false)}
-                  className="px-4 py-2 rounded border"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={submitting}
-                  type="submit"
-                  className="px-4 py-2 rounded border disabled:opacity-60"
-                  style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-                >
-                  {submitting ? 'Creating…' : 'Create Cargo'}
-                </button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
 
-      {showBulkCargo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-          style={{ backgroundColor: 'rgba(11, 28, 45, 0.8)' }}
-          onClick={() => setShowBulkCargo(false)}
-        >
-          <div
-            className="bg-card rounded-lg border w-full max-w-xl my-auto max-h-[90vh] overflow-y-auto"
-            style={{ borderColor: 'var(--border)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <h2 className="text-xl" style={{ fontFamily: 'var(--font-heading)' }}>
-                  Bulk Create Cargo
-                </h2>
-                <p className="text-sm opacity-60 mt-1">Creates multiple containers under one Bill of Lading.</p>
-              </div>
-              <button
-                onClick={() => setShowBulkCargo(false)}
-                className="p-2 rounded border"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={submitBulkCargo} className="p-6 space-y-4">
-              {clientsError && (
-                <div className="text-sm" style={{ color: 'var(--destructive)' }}>
-                  {clientsError}
-                </div>
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-default pt-4">
+            <div>
+              {newCargoStep > 1 && (
+                <Button onClick={() => { setNewCargoStep((s) => s - 1); setStepError(null); }} variant="outline">
+                  Back
+                </Button>
               )}
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={resetNewCargo} variant="outline">Cancel</Button>
+              {newCargoStep < 3 ? (
+                <Button onClick={handleNextNewCargoStep} className="inline-flex items-center gap-1.5">
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              ) : (
+                <Button onClick={submitNewCargo} disabled={submitting}>
+                  {submitting ? 'Creating…' : 'Create Cargo'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Client</label>
-                <select
-                  value={bulkForm.client_id}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === '__add_new_client__') {
-                      onCreateClient();
-                      return;
-                    }
-                    setBulkForm((f) => ({ ...f, client_id: v }));
+      <Dialog open={showBulkCargo} onOpenChange={(open) => { if (!open) resetBulkCargo(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Create Cargo</DialogTitle>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Create multiple containers under one Bill of Lading</p>
+          </DialogHeader>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center gap-2 flex-1">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: bulkCargoStep >= step ? 'var(--primary)' : 'var(--border)',
+                    color: bulkCargoStep >= step ? 'white' : 'var(--text-secondary)',
                   }}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  disabled={clientsLoading}
                 >
-                  <option value="">Select client…</option>
-                  <option value="__add_new_client__">+ Add new client…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {clientsLoading && <div className="text-xs opacity-60 mt-1">Loading clients…</div>}
+                  {step}
+                </div>
+                <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-secondary)' }}>
+                  {step === 1 ? 'Type' : step === 2 ? 'Details' : 'Review'}
+                </span>
+                {step < 3 && (
+                  <div
+                    className="flex-1 h-px mx-1 transition-colors"
+                    style={{ backgroundColor: bulkCargoStep > step ? 'var(--primary)' : 'var(--border)' }}
+                  />
+                )}
               </div>
+            ))}
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
+          {/* Step content */}
+          <div>
+            {(stepError || clientsError) && (
+              <div className="mb-4 text-xs px-3 py-2 rounded border" style={{ color: 'var(--destructive)', borderColor: 'var(--destructive)', background: 'rgba(239,68,68,0.05)' }}>
+                {stepError || clientsError}
+              </div>
+            )}
+
+            {/* Step 1: Client & Cargo Type */}
+            {bulkCargoStep === 1 && (
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm opacity-70 mb-1">Category</label>
-                  <select
-                    value={bulkForm.category}
-                    onChange={(e) => setBulkForm((f) => ({ ...f, category: e.target.value as CargoCategory }))}
-                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                    style={{ borderColor: 'var(--border)' }}
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Client</label>
+                  <SelectField
+                    value={bulkForm.client_id}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__add_new_client__') { onCreateClient(); return; }
+                      setBulkForm((f) => ({ ...f, client_id: v }));
+                    }}
+                    disabled={clientsLoading}
                   >
-                    <option value="ELECTRONICS">Electronics</option>
-                    <option value="RAW_MATERIALS">Raw Materials</option>
-                    <option value="MEDS_BEVERAGE">Meds & Beverage</option>
-                  </select>
+                    <option value="">Select client…</option>
+                    <option value="__add_new_client__">+ Add new client…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </SelectField>
+                  {clientsLoading && <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Loading clients…</div>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Category</label>
+                    <SelectField
+                      value={bulkForm.category}
+                      onChange={(e) => setBulkForm((f) => ({ ...f, category: e.target.value as CargoCategory }))}
+                    >
+                      <option value="ELECTRONICS">Electronics</option>
+                      <option value="RAW_MATERIALS">Raw Materials</option>
+                      <option value="MEDS_BEVERAGE">Meds & Beverage</option>
+                    </SelectField>
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Container Count</label>
+                    <input
+                      type="number" min={1}
+                      value={bulkForm.container_count}
+                      onChange={(e) => setBulkForm((f) => ({ ...f, container_count: Number(e.target.value) || 1 }))}
+                      className="form-input"
+                    />
+                    <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                      Example: 5 creates GROUP123-001 to GROUP123-005
+                    </div>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm opacity-70 mb-1">Number of Containers</label>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Tax Payment Method</label>
+                  <SelectField
+                    value={bulkForm.clearance_pathway}
+                    onChange={(e) => setBulkForm((f) => ({ ...f, clearance_pathway: e.target.value as any }))}
+                  >
+                    <option value="PORT_CLEARANCE">Port Clearance (Pay Tax at Port)</option>
+                    <option value="T1_TRANSIT">T1 Transit (Pay Tax After Transport)</option>
+                  </SelectField>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {bulkForm.clearance_pathway === 'PORT_CLEARANCE'
+                      ? 'Requires: Draft, Assessment, Exit Note'
+                      : 'Requires: T1 Form, IM8 Form, Exit Note'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Container Group Details */}
+            {bulkCargoStep === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Bill of Lading</label>
                   <input
-                    type="number"
-                    min={1}
-                    value={bulkForm.container_count}
-                    onChange={(e) => setBulkForm((f) => ({ ...f, container_count: Number(e.target.value) || 1 }))}
-                    className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                    style={{ borderColor: 'var(--border)' }}
+                    value={bulkForm.bill_of_lading}
+                    onChange={(e) => setBulkForm((f) => ({ ...f, bill_of_lading: e.target.value }))}
+                    className="form-input"
+                    placeholder="e.g., GROUP123"
                   />
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Example: 5 will create GROUP123-001 to GROUP123-005
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Origin</label>
+                    <input
+                      value={bulkForm.origin}
+                      onChange={(e) => setBulkForm((f) => ({ ...f, origin: e.target.value }))}
+                      className="form-input"
+                      placeholder="e.g., Mombasa, KN"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Destination</label>
+                    <input
+                      value={bulkForm.destination}
+                      onChange={(e) => setBulkForm((f) => ({ ...f, destination: e.target.value }))}
+                      className="form-input"
+                      placeholder="e.g., Kigali, RW"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Route: {bulkForm.origin || 'Origin'} → {bulkForm.destination || 'Destination'}
+                </div>
+
+                <div>
+                  <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Expected Arrival Date</label>
+                  <input
+                    type="date"
+                    value={bulkForm.expected_arrival_date}
+                    onChange={(e) => setBulkForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
+                    className="form-input date-white-icon"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Required Documents</div>
+                  <div className="flex flex-wrap gap-2">
+                    {requiredDocsForCategory(bulkForm.category)
+                      .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
+                      .map(formatLabel)
+                      .filter((label) => !['WH7', 'Exit Note', 'Exit note'].includes(label))
+                      .map((label) => (
+                        <span key={label} className="text-xs px-2.5 py-1 rounded-md border border-default" style={{ color: 'var(--text-secondary)' }}>
+                          {label}
+                        </span>
+                      ))}
                   </div>
                 </div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Tax Payment Method</label>
-                <select
-                  value={bulkForm.clearance_pathway}
-                  onChange={(e) => setBulkForm((f) => ({ ...f, clearance_pathway: e.target.value as any }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  <option value="PORT_CLEARANCE">Port Clearance (Pay Tax at Port)</option>
-                  <option value="T1_TRANSIT">T1 Transit (Pay Tax After Transport)</option>
-                </select>
-                <p className="text-xs opacity-60 mt-1">
-                  {bulkForm.clearance_pathway === 'PORT_CLEARANCE' 
-                    ? 'Requires: Draft, Assessment, Exit Note' 
-                    : 'Requires: T1 Form, IM8 Form, Exit Note'}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Container Group Bill of Loading</label>
-                <input
-                  value={bulkForm.bill_of_lading}
-                  onChange={(e) => setBulkForm((f) => ({ ...f, bill_of_lading: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., GROUP123"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Origin</label>
-                <input
-                  value={bulkForm.origin}
-                  onChange={(e) => setBulkForm((f) => ({ ...f, origin: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., Mombasa, KN"
-                />
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Route: {bulkForm.origin || 'Origin'} → {bulkForm.destination || 'Destination'}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Destination</label>
-                <input
-                  value={bulkForm.destination}
-                  onChange={(e) => setBulkForm((f) => ({ ...f, destination: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground"
-                  style={{ borderColor: 'var(--border)' }}
-                  placeholder="e.g., Kigali, RW"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm opacity-70 mb-1">Expected Arrival Date</label>
-                <input
-                  type="date"
-                  value={bulkForm.expected_arrival_date}
-                  onChange={(e) => setBulkForm((f) => ({ ...f, expected_arrival_date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded border bg-background text-foreground date-white-icon"
-                  style={{ borderColor: 'var(--border)' }}
-                />
-              </div>
-
-              <div>
-                <div className="text-sm opacity-70 mb-1">Required documents (auto)</div>
-                <div className="text-xs text-muted-foreground">
+            {/* Step 3: Review & Submit */}
+            {bulkCargoStep === 3 && (
+              <div className="rounded-lg border border-default p-4 space-y-3">
+                {[
+                  ['Client', clients.find((c) => c.id === bulkForm.client_id)?.name ?? bulkForm.client_id],
+                  ['Category', formatLabel(bulkForm.category)],
+                  ['Container Count', String(bulkForm.container_count)],
+                  ['Tax Method', bulkForm.clearance_pathway === 'PORT_CLEARANCE' ? 'Port Clearance' : 'T1 Transit'],
+                  ['Bill of Lading', bulkForm.bill_of_lading],
+                  ['Origin', bulkForm.origin || '—'],
+                  ['Destination', bulkForm.destination || '—'],
+                  ['Expected Arrival', bulkForm.expected_arrival_date || '—'],
+                ].map(([label, value], i) => (
+                  <div key={label} className={i > 0 ? 'border-t border-default pt-3 flex justify-between text-sm' : 'flex justify-between text-sm'}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                    <span className="font-medium">{value}</span>
+                  </div>
+                ))}
+                <div className="border-t border-default pt-3 flex flex-wrap gap-1.5">
+                  <span className="text-xs w-full" style={{ color: 'var(--text-secondary)' }}>Required Documents</span>
                   {requiredDocsForCategory(bulkForm.category)
                     .filter((doc) => !['WH7_DOC', 'EXIT_NOTE', 'IMPORT_PERMIT'].includes(doc))
                     .map(formatLabel)
                     .filter((label) => !['WH7', 'Exit Note', 'Exit note'].includes(label))
-                    .join(', ')}
+                    .map((label) => (
+                      <span key={label} className="text-xs px-2 py-0.5 rounded border border-default">{label}</span>
+                    ))}
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowBulkCargo(false)}
-                  className="px-4 py-2 rounded border"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={submitting}
-                  type="submit"
-                  className="px-4 py-2 rounded border disabled:opacity-60"
-                  style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-                >
-                  {submitting ? 'Creating…' : 'Create Containers'}
-                </button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-default pt-4">
+            <div>
+              {bulkCargoStep > 1 && (
+                <Button onClick={() => { setBulkCargoStep((s) => s - 1); setStepError(null); }} variant="outline">
+                  Back
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={resetBulkCargo} variant="outline">Cancel</Button>
+              {bulkCargoStep < 3 ? (
+                <Button onClick={handleNextBulkCargoStep} className="inline-flex items-center gap-1.5">
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              ) : (
+                <Button onClick={submitBulkCargo} disabled={submittingBulk}>
+                  {submittingBulk ? 'Creating…' : 'Create Containers'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   Check,
@@ -10,6 +11,8 @@ import {
   CheckCircle2,
   Forward,
 } from 'lucide-react';
+import { SelectField } from '@/app/components/ui/select-field';
+import { Button } from '@/app/components/ui/button';
 import {
   getEmailIntakeSetup,
   patchEmailIntakeClientBillingEmail,
@@ -49,11 +52,11 @@ function EmailTemplateBlock({
     <div className="space-y-2 border-t pt-4 first:border-t-0 first:pt-0">
       <div>
         <p className="text-sm font-medium">{title}</p>
-        {description && <p className="text-xs opacity-60 mt-0.5">{description}</p>}
+        {description && <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{description}</p>}
       </div>
       <div className="flex gap-2 items-start">
         <p className="text-sm flex-1">
-          <span className="text-xs opacity-60">Subject: </span>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Subject: </span>
           {template.subject}
         </p>
         <CopyButton text={template.subject} label="Subject" />
@@ -156,17 +159,23 @@ export function EmailIntakeSetupPage() {
   const selected = guide?.selected_client;
 
   if (loading && !guide) {
-    return <div className="p-6 text-sm opacity-70">Loading email intake setup…</div>;
+    return (
+      <div className="empty-state">
+        <div className="animate-pulse">
+          <div className="w-6 h-6 rounded-full loading-pulse"></div>
+        </div>
+        <p className="empty-title">Loading setup</p>
+        <p className="empty-sub">Preparing email intake configuration…</p>
+      </div>
+    );
   }
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Email Intake Setup</h1>
-        <p className="text-sm opacity-70 max-w-2xl">
-          Recommended workflow: when a client sends documents to your operations inbox, your team{' '}
-          <strong>forwards the email</strong> (with attachments) to the intake address below. No client IT setup
-          required — professional, fast, and under your control.
+        <h1 className="page-title">Email Intake Setup</h1>
+        <p className="page-desc mt-2">
+          Forward client emails with attachments to the intake address below. No client-side IT setup required.
         </p>
       </div>
 
@@ -184,7 +193,7 @@ export function EmailIntakeSetupPage() {
               <Forward className="w-4 h-4" />
               Document intake address
             </h2>
-            <p className="text-xs opacity-60">
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
               {guide.tenant_name ?? 'Your company'} — forward client emails here
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -202,24 +211,24 @@ export function EmailIntakeSetupPage() {
 
           <section className="rounded-lg border p-4 space-y-4">
             <h2 className="text-sm font-medium">Per client</h2>
-            <select
-              className="w-full max-w-md border rounded px-3 py-2 text-sm bg-background"
+            <SelectField
+              className="max-w-md"
               value={selectedClientId}
               onChange={(e) => setSelectedClientId(e.target.value)}
             >
               <option value="">— Select client —</option>
-              {guide.clients.map((c) => (
+              {(guide.clients ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                   {c.billing_email ? ` (${c.billing_email})` : ''}
                 </option>
               ))}
-            </select>
+            </SelectField>
 
             {selectedClientId && (
               <div className="space-y-2">
                 <label className="text-xs font-medium">Client sender email (for matching)</label>
-                <p className="text-xs opacity-60">
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   The address this client normally uses when they email you — usually the From on their invoices.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -230,14 +239,12 @@ export function EmailIntakeSetupPage() {
                     onChange={(e) => setBillingEmail(e.target.value)}
                     placeholder="finance@client.com"
                   />
-                  <button
-                    type="button"
+                  <Button
                     disabled={saving}
                     onClick={handleSaveBilling}
-                    className="px-4 py-2 text-sm rounded bg-primary text-primary-foreground disabled:opacity-50"
                   >
                     {saving ? 'Saving…' : 'Save'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -248,42 +255,37 @@ export function EmailIntakeSetupPage() {
               <section className="rounded-lg border p-4 space-y-3">
                 <h2 className="text-sm font-medium">Professional materials</h2>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
+                  <Button
                     onClick={() => {
                       printHtml(selected.client_packet_html, setError);
                       setChecklist((c) => ({ ...c, packet: true }));
                     }}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded bg-primary text-primary-foreground"
                   >
                     <Printer className="w-4 h-4" />
                     Print ops guide (PDF)
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     onClick={() => printHtml(selected.packet_html, setError)}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded border"
+                    variant="outline"
                   >
                     <Printer className="w-4 h-4" />
                     Print full guide (+ IT optional)
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     disabled={testing}
                     onClick={handleTestRoute}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded border disabled:opacity-50"
+                    variant="outline"
                   >
                     <Send className="w-4 h-4" />
                     {testing ? 'Testing…' : 'Test matching'}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
                     onClick={() => load(selectedClientId)}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded border"
+                    variant="outline"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Refresh
-                  </button>
+                  </Button>
                 </div>
                 {testResult && <p className="text-sm text-green-700 dark:text-green-400">{testResult}</p>}
               </section>
@@ -337,7 +339,7 @@ export function EmailIntakeSetupPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs opacity-50 pt-2">
+            <p className="text-xs pt-2" style={{ color: 'var(--text-tertiary)' }}>
               Backend: inbound {guide.pipeline.inbound_enabled ? 'on' : 'off'} · {guide.webhook_url_hint}
             </p>
           </section>

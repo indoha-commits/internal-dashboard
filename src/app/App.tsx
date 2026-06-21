@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/app/components/Sidebar';
 import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
 import { getSupabase } from '@/app/auth/supabase';
+import { sessionStore } from '@/app/auth/sessionStore';
 import {
   Sheet,
   SheetContent,
@@ -24,7 +25,6 @@ import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
 import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
-import { EmailIntakeSetupPage } from '@/app/components/pages/EmailIntakeSetupPage';
 import { WhatsAppNumbersPage } from '@/app/components/pages/WhatsAppNumbersPage';
 import { fetchJson } from '@/app/api/client';
 
@@ -41,8 +41,9 @@ type OpsPageId =
   | 'delete-client'
   | 'add-client-user'
   | 'activity-log'
-  | 'email-intake-setup'
-  | 'whatsapp-numbers';
+
+  | 'whatsapp-numbers'
+  | 'settings';
 
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
@@ -57,8 +58,8 @@ const pageToPath: Record<OpsPageId, string> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
-  'email-intake-setup': 'email-intake-setup',
   'whatsapp-numbers': 'whatsapp-numbers',
+  settings: 'settings',
 };
 
 const pathToPage: Record<string, OpsPageId> = {
@@ -74,14 +75,16 @@ const pathToPage: Record<string, OpsPageId> = {
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
-  'email-intake-setup': 'email-intake-setup',
   'whatsapp-numbers': 'whatsapp-numbers',
+  settings: 'settings',
 };
+
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 function requireEnv(name: string): string {
   const v = (import.meta.env as any)[name] as string | undefined;
-  if (!v) throw new Error(`Missing required env var: ${name}`);
-  return v;
+  if (!v && !USE_MOCK_DATA) throw new Error(`Missing required env var: ${name}`);
+  return v ?? '';
 }
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
@@ -171,10 +174,16 @@ function OpsPageRenderer({
       return <ActivityLogPage />;
     case 'operations-update':
       return <OperationsUpdatePage />;
-    case 'email-intake-setup':
-      return <EmailIntakeSetupPage />;
-    case 'whatsapp-numbers':
+case 'whatsapp-numbers':
       return <WhatsAppNumbersPage />;
+    case 'settings':
+      return <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="page-title">Settings</h1>
+          <p className="page-desc mt-2">Account and application preferences</p>
+        </div>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Settings page coming soon.</p>
+      </div>;
     default:
       return <DashboardPage />;
   }
@@ -183,6 +192,7 @@ function OpsPageRenderer({
 export default function App() {
   const [dataSourceConnected, setDataSourceConnected] = useState<boolean | null>(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, toggleTheme } = useThemeToggle();
   const { currentPage, setCurrentPage } = useOpsRouteState();
   const currentPageMemo = useMemo(() => currentPage, [currentPage]);
@@ -205,7 +215,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       // Release internal session lock (best-effort)
-      const sessionId = window.sessionStorage.getItem('internal_session_id');
+      const sessionId = sessionStore.getId();
       if (sessionId) {
         try {
           const { releaseInternalSession } = await import('@/app/api/ops');
@@ -225,7 +235,13 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <Sidebar currentPage={currentPageMemo} onPageChange={(page) => setCurrentPage(page as OpsPageId)} onLogout={handleLogout} />
+      <Sidebar
+        currentPage={currentPageMemo}
+        onPageChange={(page) => setCurrentPage(page as OpsPageId)}
+        onLogout={handleLogout}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
 
       {/* Mobile top bar */}
       <div
@@ -242,27 +258,17 @@ export default function App() {
           <Menu className="w-5 h-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <div className="text-sm" style={{ fontWeight: 600 }}>
+          <div className="text-sm tracking-wide" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--foreground)' }}>
             Galaxy Logistics
           </div>
-          <div className="text-xs opacity-60 truncate">Operations Cockpit</div>
+          <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>Operations Cockpit</div>
         </div>
         <button
           type="button"
           onClick={toggleTheme}
-          className="px-3 py-2 rounded border text-xs"
-          style={{ borderColor: 'var(--border)' }}
+          className="topbar-btn"
         >
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="inline-flex items-center justify-center w-10 h-10 rounded border"
-          style={{ borderColor: 'var(--border)' }}
-          aria-label="Logout"
-        >
-          <LogOut className="w-4 h-4" />
         </button>
       </div>
 
@@ -282,24 +288,14 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className="min-h-screen px-4 py-4 sm:px-6 sm:py-6 md:ml-64 md:px-12 md:py-10">
+      <main className={`min-h-screen px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'}`}>
         <div className="hidden md:flex justify-end items-center gap-3 mb-6">
           <button
             type="button"
             onClick={toggleTheme}
-            className="px-3 py-2 rounded border text-xs inline-flex"
-            style={{ borderColor: 'var(--border)' }}
+            className="topbar-btn"
           >
             {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded border text-xs"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
           </button>
         </div>
         <Routes>

@@ -1,250 +1,35 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle, Clock, Upload, XCircle, ChevronDown, ChevronRight, Eye } from 'lucide-react';
-import {
-  createOpsApprovalUploadUrl,
-  createOpsCargoApproval,
-  getOpsValidationQueue,
-  type OpsValidationQueueItem,
-} from '@/app/api/ops';
-import { getOpsDocumentSignedUrl } from '@/app/api/client';
-import { getOpsApprovalSignedUrl } from '@/app/api/ops';
+import { CheckCircle, Clock, Upload, XCircle, ChevronDown, ChevronRight, Eye, Inbox } from 'lucide-react';
+import { getOpsApprovalSignedUrl, getOpsDocumentSignedUrl } from '@/app/api/ops';
+import { CrossPageStatus } from '@/app/components/CrossPageStatus';
 import { formatLabel } from '@/app/api/categories';
-import { getSupabase } from '@/app/auth/supabase';
+import { useValidationQueue } from '@/app/hooks/useValidationQueue';
+import { useToast } from '@/app/hooks/useToast';
+import { Button } from '@/app/components/ui/button';
 
-type Item = OpsValidationQueueItem;
-
-type Grouped = Array<{
-  clientName: string;
-  clientId: string;
-  items: Item[];
-}>;
-
-async function uploadToSignedUrl(signedUrl: string, file: File): Promise<void> {
-  const res = await fetch(signedUrl, {
-    method: 'PUT',
-    body: file,
-    headers: {
-      'content-type': file.type || 'application/octet-stream',
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`upload failed: ${res.status} ${text}`);
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'pending_upload':
+      return { color: '#d97706', text: formatLabel(status), icon: Clock };
+    case 'pending_validation':
+      return { color: '#2563eb', text: formatLabel(status), icon: Clock };
+    case 'validated':
+      return { color: '#16a34a', text: formatLabel(status), icon: CheckCircle };
+    case 'failed':
+      return { color: '#dc2626', text: formatLabel(status), icon: Clock };
+    default:
+      return { color: '#6b7280', text: formatLabel(status), icon: Clock };
   }
 }
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'pending_upload':
-      return {
-        bg: 'var(--accent)',
-        color: 'var(--accent-foreground)',
-        text: 'AWAITING UPLOAD',
-        icon: Clock,
-      };
-    case 'pending_validation':
-      return {
-        bg: 'rgba(59, 130, 246, 0.15)',
-        color: 'rgb(59, 130, 246)',
-        text: 'PENDING VALIDATION',
-        icon: Clock,
-      };
-    case 'validated':
-      return {
-        bg: 'rgba(34, 197, 94, 0.15)',
-        color: 'rgb(34, 197, 94)',
-        text: 'VALIDATED',
-        icon: CheckCircle,
-      };
-    case 'failed':
-      return {
-        bg: 'rgba(59, 130, 246, 0.15)',
-        color: 'rgb(59, 130, 246)',
-        text: 'AWAITING VALIDATION',
-        icon: Clock,
-      };
-    default:
-      return {
-        bg: 'var(--muted)',
-        color: 'var(--muted-foreground)',
-        text: String(status).toUpperCase(),
-        icon: Clock,
-      };
-  }
-};
-
 export function ValidationPage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
-  const [expandedCargo, setExpandedCargo] = useState<Record<string, boolean>>({});
-
-  const assessmentInputRef = useRef<HTMLInputElement | null>(null);
-  const draftInputRef = useRef<HTMLInputElement | null>(null);
-  const wh7InputRef = useRef<HTMLInputElement | null>(null);
-  const exitNoteInputRef = useRef<HTMLInputElement | null>(null);
-  const im8InputRef = useRef<HTMLInputElement | null>(null);
-  const pendingPickRef = useRef<{ cargoId: string; kind: ApprovalKind } | null>(null);
-
-  const refresh = async () => {
-    const res = await getOpsValidationQueue();
-    setItems(res.items ?? []);
-  };
-
-  // Fetch initial validation queue
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await getOpsValidationQueue();
-        if (!cancelled) setItems(res.items ?? []);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Real-time subscriptions for validation queue updates
-  useEffect(() => {
-    const supabase = getSupabase();
-
-    // Subscribe to cargo_client_approvals table (approval uploads/updates)
-    const approvalsSubscription = supabase
-      .channel('validation_queue_approvals')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'cargo_client_approvals',
-        },
-        () => {
-          refresh();
-        }
-      )
-      .subscribe();
-
-    // Subscribe to client_documents table (document verification changes)
-    const documentsSubscription = supabase
-      .channel('validation_queue_documents')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'client_documents',
-        },
-        () => {
-          refresh();
-        }
-      )
-      .subscribe();
-
-    // Subscribe to cargo table (general cargo updates)
-    const cargoSubscription = supabase
-      .channel('validation_queue_cargo')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'cargo',
-        },
-        () => {
-          refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(approvalsSubscription);
-      supabase.removeChannel(documentsSubscription);
-      supabase.removeChannel(cargoSubscription);
-    };
-  }, []);
-
-  const grouped = useMemo<Grouped>(() => {
-    const byClient = new Map<string, { clientName: string; clientId: string; items: Item[] }>();
-    for (const it of items) {
-      const clientName = it.client_name ?? 'Unknown Client';
-      const clientId = it.client_id ?? 'unknown';
-      const key = `${clientId}::${clientName}`;
-      const g = byClient.get(key) ?? { clientName, clientId, items: [] };
-      g.items.push(it);
-      byClient.set(key, g);
-    }
-
-    return Array.from(byClient.values())
-      .sort((a, b) => (a.clientName ?? '').localeCompare(b.clientName ?? ''))
-      .map((g) => ({
-        ...g,
-        items: g.items
-          .slice()
-          .sort((a, b) => String(a.cargo_id ?? '').localeCompare(String(b.cargo_id ?? ''))),
-      }));
-  }, [items]);
-
-  type ApprovalKind = 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
-
-  const handleUpload = async (
-    cargoId: string,
-    kind: ApprovalKind,
-    file: File
-  ) => {
-    const key = `${cargoId}:${kind}`;
-    setBusy((m) => ({ ...m, [key]: true }));
-    try {
-      const upload = await createOpsApprovalUploadUrl(cargoId, {
-        kind,
-        file_name: file.name,
-      });
-
-      await uploadToSignedUrl(upload.upload_url, file);
-
-      await createOpsCargoApproval(cargoId, {
-        kind,
-        file_path: upload.path,
-        notes: 'Uploaded from internal dashboard',
-      });
-
-      await refresh();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy((m) => ({ ...m, [key]: false }));
-    }
-  };
-
-  const summary = useMemo(() => {
-    const pendingUpload = items.filter((i) => i.validation_status === 'pending_upload').length;
-    const pendingValidation = items.filter(
-      (i) => i.validation_status === 'pending_validation' || i.validation_status === 'failed',
-    ).length;
-    const validated = items.filter((i) => i.validation_status === 'validated').length;
-    const failed = items.filter((i) => i.validation_status === 'failed').length;
-    return { pendingUpload, pendingValidation, validated, failed };
-  }, [items]);
-
-  const pickFile = (cargoId: string, kind: ApprovalKind) => {
-    pendingPickRef.current = { cargoId, kind };
-    if (kind === 'ASSESSMENT') assessmentInputRef.current?.click();
-    else if (kind === 'DECLARATION_DRAFT') draftInputRef.current?.click();
-    else if (kind === 'WH7_DOC') wh7InputRef.current?.click();
-    else if (kind === 'EXIT_NOTE') exitNoteInputRef.current?.click();
-    else im8InputRef.current?.click();
-  };
+  const {
+    loading, error, items, grouped, busy, summary,
+    expandedClients, setExpandedClients,
+    expandedCargo, setExpandedCargo,
+    pickFile, onFilePicked,
+    assessmentInputRef, draftInputRef, wh7InputRef, exitNoteInputRef, im8InputRef,
+  } = useValidationQueue();
+  const { toast } = useToast();
 
   const formatApprovalStatus = (status?: string | null) => {
     if (!status) return 'Not uploaded';
@@ -252,19 +37,21 @@ export function ValidationPage() {
     return formatLabel(status);
   };
 
-  const onFilePicked = async (file: File | null) => {
-    const pending = pendingPickRef.current;
-    pendingPickRef.current = null;
-    if (!pending || !file) return;
-    await handleUpload(pending.cargoId, pending.kind, file);
+  const getStatusColor = (status?: string | null) => {
+    if (!status) return '#6b7280';
+    if (status === 'APPROVED') return '#16a34a';
+    if (status === 'REJECTED') return '#dc2626';
+    return '#d97706';
   };
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1>Validation Queue</h1>
-        <p className="text-sm opacity-60 mt-2">Upload assessments and draft validations</p>
+        <h1 className="page-title">Validation Queue</h1>
+        <p className="page-desc mt-2">Cargos awaiting document upload and assessment review</p>
       </div>
+
+      <CrossPageStatus />
 
       {/* hidden file inputs */}
       <input
@@ -300,69 +87,79 @@ export function ValidationPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="bg-card rounded-lg p-5 border" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-card rounded-lg p-5 border border-default">
           <div className="flex items-center gap-3 mb-2">
-            <Clock className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-            <div className="text-sm opacity-60">Awaiting Upload</div>
+            <Upload className="w-5 h-5" style={{ color: '#10b981' }} />
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Awaiting Upload</div>
           </div>
-          <div className="text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
+          <div className="text-3xl kpi-value">
             {summary.pendingUpload}
           </div>
         </div>
-        <div className="bg-card rounded-lg p-5 border" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-card rounded-lg p-5 border border-default">
           <div className="flex items-center gap-3 mb-2">
-            <Clock className="w-5 h-5" style={{ color: 'rgb(59, 130, 246)' }} />
-            <div className="text-sm opacity-60">Pending Validation</div>
+            <Inbox className="w-5 h-5" style={{ color: '#5e6ad2' }} />
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending Validation</div>
           </div>
-          <div className="text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
+          <div className="text-3xl kpi-value">
             {summary.pendingValidation}
           </div>
         </div>
-        <div className="bg-card rounded-lg p-5 border" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-card rounded-lg p-5 border border-default">
           <div className="flex items-center gap-3 mb-2">
-            <CheckCircle className="w-5 h-5" style={{ color: 'rgb(34, 197, 94)' }} />
-            <div className="text-sm opacity-60">Validated / Failed</div>
+            <CheckCircle className="w-5 h-5" style={{ color: '#22c55e' }} />
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Validated / Failed</div>
           </div>
-          <div className="text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>
+          <div className="text-3xl kpi-value">
             {summary.validated + summary.failed}
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <div className="bg-card rounded-lg border border-default">
         {loading ? (
-          <div className="px-6 py-8 text-sm opacity-60">Loading…</div>
+          <div className="empty-state">
+            <div className="animate-pulse">
+              <div className="w-6 h-6 rounded-full loading-pulse"></div>
+            </div>
+            <p className="empty-title">Loading validation queue</p>
+            <p className="empty-sub">Fetching the latest data…</p>
+          </div>
         ) : error ? (
-          <div className="px-6 py-8 text-sm" style={{ color: 'var(--destructive)' }}>
+          <div className="px-6 py-8 text-sm text-destructive">
             {error}
           </div>
         ) : items.length === 0 ? (
-          <div className="px-6 py-8 text-sm opacity-60">No cargos ready for validation.</div>
+          <div className="empty-state">
+            <CheckCircle size={28} color="#1c1d20" />
+            <p className="empty-title">No cargos ready for validation</p>
+            <p className="empty-sub">Items appear here when documents need validation</p>
+          </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          <div className="divide-y border-default">
             {grouped.map((g) => {
               const expanded = expandedClients[g.clientId] ?? true;
 
               return (
                 <div key={g.clientId} className="px-6 py-4">
-                  <button
+                  <Button variant="outline"
                     className="w-full flex items-center justify-between"
                     onClick={() => setExpandedClients((m) => ({ ...m, [g.clientId]: !expanded }))}
                   >
-                    <div className="flex items-center gap-2">
-                      {expanded ? (
-                        <ChevronDown className="w-4 h-4 opacity-60" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 opacity-60" />
-                      )}
-                      <div>
-                        <div className="text-sm" style={{ fontWeight: 600 }}>
-                          {g.clientName}
+                      <div className="flex items-center gap-2">
+                        {expanded ? (
+                          <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 opacity-60 shrink-0" />
+                        )}
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-semibold">
+                            {g.clientName}
+                          </div>
+                          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{g.items.length} {g.items.length === 1 ? 'cargo' : 'cargos'}</div>
                         </div>
-                        <div className="text-xs opacity-60">{g.items.length} cargos</div>
                       </div>
-                    </div>
-                  </button>
+                  </Button>
 
                   {expanded && (
                     <div className="mt-4 space-y-3">
@@ -388,10 +185,12 @@ export function ValidationPage() {
                           it.validation_status === 'pending_upload' || it.validation_status === 'failed';
 
                         return (
-                          <div key={it.cargo_id} className="rounded border" style={{ borderColor: 'var(--border)' }}>
+                          <div key={it.cargo_id} className="rounded border border-default">
                             <div className="px-4 py-3 flex items-start justify-between gap-4">
-                              <button
-                                className="flex items-start gap-3"
+                              <div
+                                className="flex items-start gap-3 cursor-pointer"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => setExpandedCargo((m) => ({ ...m, [it.cargo_id]: !cargoExpanded }))}
                               >
                                 {cargoExpanded ? (
@@ -403,18 +202,18 @@ export function ValidationPage() {
                                   <div className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
                                     {it.cargo_id}
                                   </div>
-                                  <div className="text-xs opacity-60 mt-1">Client: {it.client_name}</div>
-                                  <div className="text-xs opacity-60">
+                                  <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Client: {it.client_name}</div>
+                                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                                     Created:{' '}
                                     {it.validation_created_at ? new Date(it.validation_created_at).toLocaleString() : '—'}
                                   </div>
                                 </div>
-                              </button>
+                              </div>
 
                               <div className="flex items-center gap-3">
                                 <div
-                                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
-                                  style={{ backgroundColor: badge.bg, color: badge.color, fontWeight: 700 }}
+                                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border"
+                                  style={{ borderColor: badge.color, color: badge.color, fontWeight: 700 }}
                                 >
                                   <Icon className="w-3.5 h-3.5" />
                                   {badge.text}
@@ -422,36 +221,30 @@ export function ValidationPage() {
                               </div>
                             </div>
 
-                            {cargoExpanded && (
-                              <div className="px-4 pb-4">
+                              {cargoExpanded && (
+                                <div className="px-4 pb-4 animate-fadeIn">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div className="border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
-                                    <div
-                                      className="text-sm mb-2"
-                                      style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}
-                                    >
+                                  <div className="border rounded-lg p-4 border-default">
+                                    <div className="text-sm mb-2">
                                       Verified Documents
                                     </div>
                                     <div className="space-y-2">
                                       {(it.documents ?? []).map((d) => (
                                         <div
                                           key={d.document_type}
-                                          className="flex items-center justify-between px-3 py-2 rounded border"
-                                          style={{ borderColor: 'var(--border)' }}
+                                          className="flex items-center justify-between px-3 py-2 rounded border border-default"
                                         >
                                           <div>
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              {d.document_type}
+                                            <div className="text-sm font-semibold">
+                                              {formatLabel(d.document_type)}
                                             </div>
-                                            <div className="text-xs opacity-60">
-                                              Uploaded {d.uploaded_at ?? '—'}
+                                            <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                               Uploaded {d.uploaded_at ? new Date(d.uploaded_at).toLocaleString() : '—'}
                                             </div>
                                           </div>
                                           <div className="flex items-center gap-3">
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 text-xs px-2 py-1 rounded border disabled:opacity-50"
-                                              style={{ borderColor: 'var(--border)' }}
+                                            <Button
+                                              className="inline-flex items-center gap-2 text-xs px-2 py-1 rounded border border-default disabled:opacity-50"
                                               disabled={!d.id && !(d.status === 'VERIFIED' && d.drive_url)}
                                               onClick={async () => {
                                                 try {
@@ -466,389 +259,254 @@ export function ValidationPage() {
                                                   const { url } = await getOpsDocumentSignedUrl(d.id);
                                                   window.open(url, '_blank', 'noreferrer');
                                                 } catch (e) {
-                                                  alert(String(e));
+                                                  toast({ type: 'error', message: 'Failed to open document' });
                                                 }
                                               }}
                                             >
                                               <Eye className="w-3.5 h-3.5" />
                                               View
-                                            </button>
-                                            <div className="text-xs opacity-70">{formatLabel(d.status)}</div>
+                                            </Button>
+                                            <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{formatLabel(d.status)}</div>
                                           </div>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
 
-                                  <div className="border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
-                                    <div
-                                      className="text-sm mb-3"
-                                      style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}
-                                    >
-                                      Actions
-                                    </div>
+                                  <div className="border rounded-lg p-5 border-default">
+                                    <div className="section-title mb-4">Actions</div>
 
-                                    <div className="space-y-3">
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                          <div className="flex-1">
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              Assessment
-                                            </div>
-                                            <div className="text-xs opacity-60 mt-1">
-                                              Status: {formatApprovalStatus(it.assessment?.status)}
-                                            </div>
+                                    <div className="space-y-4">
+                                      {/* Assessment */}
+                                      <div className="rounded-lg p-4 bg-muted">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Assessment</div>
+                                            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: getStatusColor(it.assessment?.status) }}>
+                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(it.assessment?.status) }} />
+                                            {formatApprovalStatus(it.assessment?.status)}
                                           </div>
-                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
-                                          {it.assessment && (it.assessment.file_path || it.assessment.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.assessment!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'ASSESSMENT')}
-                                            disabled={!canUploadRequired || Boolean(busy[assessmentKey]) || Boolean(it.assessment && it.assessment.status !== 'REJECTED')}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {it.assessment && (it.assessment.file_path || it.assessment.file_url) && (
+                                              <Button variant="outline"
+                                                onClick={async () => {
+                                                  try {
+                                                    const { url } = await getOpsApprovalSignedUrl(it.assessment!.id);
+                                                    window.open(url, '_blank', 'noreferrer');
+                                                  } catch (e) {
+                                                    toast({ type: 'error', message: 'Failed to open document' });
+                                                  }
+                                                }}>
+                                                <Eye className="w-3.5 h-3.5" /> View
+                                              </Button>
+                                            )}
+                                            <Button onClick={() => pickFile(it.cargo_id, 'ASSESSMENT')}
+                                              disabled={!canUploadRequired || Boolean(busy[assessmentKey]) || Boolean(it.assessment && it.assessment.status !== 'REJECTED')}
+                                              className="text-xs">
+                                              <Upload className="w-3.5 h-3.5" />
                                               {busy[assessmentKey]
-                                                ? it.assessment?.status === 'REJECTED'
-                                                  ? 'Re-uploading Assessment…'
-                                                  : 'Uploading Assessment…'
+                                                ? it.assessment?.status === 'REJECTED' ? 'Re-uploading…' : 'Uploading…'
                                                 : it.assessment
-                                                  ? it.assessment.status === 'REJECTED'
-                                                    ? 'Re-upload Assessment'
-                                                    : 'Uploaded'
-                                                  : 'Upload Assessment'}
-                                            </span>
-                                          </button>
-                                        </div>
+                                                  ? it.assessment.status === 'REJECTED' ? 'Re-upload' : 'Uploaded'
+                                                  : 'Upload'}
+                                            </Button>
+                                          </div>
                                         </div>
                                         {it.assessment?.status === 'REJECTED' && it.assessment?.rejection_reason && (
-                                          <div 
-                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
-                                            style={{ 
-                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                              borderLeft: '3px solid rgb(239, 68, 68)' 
-                                            }}
-                                          >
-                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
-                                            <div className="flex-1">
-                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
-                                                Rejection Reason
-                                              </div>
-                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
-                                                {it.assessment.rejection_reason}
-                                              </div>
+                                          <div className="flex items-start gap-2 mt-3 px-3 py-2 rounded text-xs" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '3px solid rgb(239, 68, 68)' }}>
+                                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div>
+                                              <div style={{ color: 'rgb(220, 38, 38)', fontWeight: 600 }}>Rejection Reason</div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>{it.assessment.rejection_reason}</div>
                                             </div>
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                          <div className="flex-1">
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              Draft Validation
-                                            </div>
-                                            <div className="text-xs opacity-60 mt-1">
-                                              Status: {formatApprovalStatus(it.draft?.status)}
-                                            </div>
+                                      {/* Draft Validation */}
+                                      <div className="rounded-lg p-4 bg-muted">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Draft Validation</div>
+                                            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: getStatusColor(it.draft?.status) }}>
+                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(it.draft?.status) }} />
+                                            {formatApprovalStatus(it.draft?.status)}
                                           </div>
-                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
-                                          {it.draft && (it.draft.file_path || it.draft.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.draft!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'DECLARATION_DRAFT')}
-                                            disabled={!canUploadRequired || Boolean(busy[draftKey]) || Boolean(it.draft && it.draft.status !== 'REJECTED')}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {it.draft && (it.draft.file_path || it.draft.file_url) && (
+                                              <Button variant="outline"
+                                                onClick={async () => {
+                                                  try {
+                                                    const { url } = await getOpsApprovalSignedUrl(it.draft!.id);
+                                                    window.open(url, '_blank', 'noreferrer');
+                                                  } catch (e) {
+                                                    toast({ type: 'error', message: 'Failed to open document' });
+                                                  }
+                                                }}>
+                                                <Eye className="w-3.5 h-3.5" /> View
+                                              </Button>
+                                            )}
+                                            <Button onClick={() => pickFile(it.cargo_id, 'DECLARATION_DRAFT')}
+                                              disabled={!canUploadRequired || Boolean(busy[draftKey]) || Boolean(it.draft && it.draft.status !== 'REJECTED')}
+                                              className="text-xs">
+                                              <Upload className="w-3.5 h-3.5" />
                                               {busy[draftKey]
-                                                ? it.draft?.status === 'REJECTED'
-                                                  ? 'Re-uploading Draft…'
-                                                  : 'Uploading Draft…'
+                                                ? it.draft?.status === 'REJECTED' ? 'Re-uploading…' : 'Uploading…'
                                                 : it.draft
-                                                  ? it.draft.status === 'REJECTED'
-                                                    ? 'Re-upload Draft'
-                                                    : 'Uploaded'
-                                                  : 'Upload Draft'}
-                                            </span>
-                                          </button>
-                                        </div>
+                                                  ? it.draft.status === 'REJECTED' ? 'Re-upload' : 'Uploaded'
+                                                  : 'Upload'}
+                                            </Button>
+                                          </div>
                                         </div>
                                         {it.draft?.status === 'REJECTED' && it.draft?.rejection_reason && (
-                                          <div 
-                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
-                                            style={{ 
-                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                              borderLeft: '3px solid rgb(239, 68, 68)' 
-                                            }}
-                                          >
-                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
-                                            <div className="flex-1">
-                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
-                                                Rejection Reason
-                                              </div>
-                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
-                                                {it.draft.rejection_reason}
-                                              </div>
+                                          <div className="flex items-start gap-2 mt-3 px-3 py-2 rounded text-xs" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '3px solid rgb(239, 68, 68)' }}>
+                                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div>
+                                              <div style={{ color: 'rgb(220, 38, 38)', fontWeight: 600 }}>Rejection Reason</div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>{it.draft.rejection_reason}</div>
                                             </div>
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                          <div className="flex-1">
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              WH7
-                                            </div>
-                                            <div className="text-xs opacity-60 mt-1">
-                                              Status: {formatApprovalStatus(it.wh7?.status)}
+                                      {/* WH7 */}
+                                      <div className="rounded-lg p-4 bg-muted">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>WH7</div>
+                                            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: getStatusColor(it.wh7?.status) }}>
+                                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(it.wh7?.status) }} />
+                                              {formatApprovalStatus(it.wh7?.status)}
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
-                                          {it.wh7 && (it.wh7.file_path || it.wh7.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.wh7!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
-                                            disabled={!canUploadRequired || Boolean(busy[wh7Key]) || Boolean(it.wh7 && it.wh7.status !== 'REJECTED')}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
+                                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {it.wh7 && (it.wh7.file_path || it.wh7.file_url) && (
+                                              <Button variant="outline"
+                                                onClick={async () => {
+                                                  try {
+                                                    const { url } = await getOpsApprovalSignedUrl(it.wh7!.id);
+                                                    window.open(url, '_blank', 'noreferrer');
+                                                  } catch (e) {
+                                                    toast({ type: 'error', message: 'Failed to open document' });
+                                                  }
+                                                }}>
+                                                <Eye className="w-3.5 h-3.5" /> View
+                                              </Button>
+                                            )}
+                                            <Button onClick={() => pickFile(it.cargo_id, 'WH7_DOC')}
+                                              disabled={!canUploadRequired || Boolean(busy[wh7Key]) || Boolean(it.wh7 && it.wh7.status !== 'REJECTED')}
+                                              className="text-xs">
+                                              <Upload className="w-3.5 h-3.5" />
                                               {busy[wh7Key]
-                                                ? it.wh7?.status === 'REJECTED'
-                                                  ? 'Re-uploading WH7…'
-                                                  : 'Uploading WH7…'
+                                                ? it.wh7?.status === 'REJECTED' ? 'Re-uploading…' : 'Uploading…'
                                                 : it.wh7
-                                                  ? it.wh7.status === 'REJECTED'
-                                                    ? 'Re-upload WH7'
-                                                    : 'Uploaded'
-                                                  : 'Upload WH7'}
-                                            </span>
-                                          </button>
-                                        </div>
+                                                  ? it.wh7.status === 'REJECTED' ? 'Re-upload' : 'Uploaded'
+                                                  : 'Upload'}
+                                            </Button>
+                                          </div>
                                         </div>
                                         {it.wh7?.status === 'REJECTED' && it.wh7?.rejection_reason && (
-                                          <div 
-                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
-                                            style={{ 
-                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                              borderLeft: '3px solid rgb(239, 68, 68)' 
-                                            }}
-                                          >
-                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
-                                            <div className="flex-1">
-                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
-                                                Rejection Reason
-                                              </div>
-                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
-                                                {it.wh7.rejection_reason}
-                                              </div>
+                                          <div className="flex items-start gap-2 mt-3 px-3 py-2 rounded text-xs" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '3px solid rgb(239, 68, 68)' }}>
+                                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div>
+                                              <div style={{ color: 'rgb(220, 38, 38)', fontWeight: 600 }}>Rejection Reason</div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>{it.wh7.rejection_reason}</div>
                                             </div>
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                          <div className="flex-1">
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              Exit Note
-                                            </div>
-                                            <div className="text-xs opacity-60 mt-1">
-                                              Status: {formatApprovalStatus(it.exit_note?.status)}
+                                      {/* Exit Note */}
+                                      <div className="rounded-lg p-4 bg-muted">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Exit Note</div>
+                                            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: getStatusColor(it.exit_note?.status) }}>
+                                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(it.exit_note?.status) }} />
+                                              {formatApprovalStatus(it.exit_note?.status)}
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
-                                          {it.exit_note && (it.exit_note.file_path || it.exit_note.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.exit_note!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
-                                            disabled={!canUploadOptional || Boolean(busy[exitNoteKey]) || Boolean(it.exit_note && it.exit_note.status !== 'REJECTED')}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
+                                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {it.exit_note && (it.exit_note.file_path || it.exit_note.file_url) && (
+                                              <Button variant="outline"
+                                                onClick={async () => {
+                                                  try {
+                                                    const { url } = await getOpsApprovalSignedUrl(it.exit_note!.id);
+                                                    window.open(url, '_blank', 'noreferrer');
+                                                  } catch (e) {
+                                                    toast({ type: 'error', message: 'Failed to open document' });
+                                                  }
+                                                }}>
+                                                <Eye className="w-3.5 h-3.5" /> View
+                                              </Button>
+                                            )}
+                                            <Button onClick={() => pickFile(it.cargo_id, 'EXIT_NOTE')}
+                                              disabled={!canUploadOptional || Boolean(busy[exitNoteKey]) || Boolean(it.exit_note && it.exit_note.status !== 'REJECTED')}
+                                              className="text-xs">
+                                              <Upload className="w-3.5 h-3.5" />
                                               {busy[exitNoteKey]
-                                                ? it.exit_note?.status === 'REJECTED'
-                                                  ? 'Re-uploading Exit Note…'
-                                                  : 'Uploading Exit Note…'
+                                                ? it.exit_note?.status === 'REJECTED' ? 'Re-uploading…' : 'Uploading…'
                                                 : it.exit_note
-                                                  ? it.exit_note.status === 'REJECTED'
-                                                    ? 'Re-upload Exit Note'
-                                                    : 'Uploaded'
-                                                  : 'Upload Exit Note'}
-                                            </span>
-                                          </button>
-                                        </div>
+                                                  ? it.exit_note.status === 'REJECTED' ? 'Re-upload' : 'Uploaded'
+                                                  : 'Upload'}
+                                            </Button>
+                                          </div>
                                         </div>
                                         {it.exit_note?.status === 'REJECTED' && it.exit_note?.rejection_reason && (
-                                          <div 
-                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
-                                            style={{ 
-                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                              borderLeft: '3px solid rgb(239, 68, 68)' 
-                                            }}
-                                          >
-                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
-                                            <div className="flex-1">
-                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
-                                                Rejection Reason
-                                              </div>
-                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
-                                                {it.exit_note.rejection_reason}
-                                              </div>
+                                          <div className="flex items-start gap-2 mt-3 px-3 py-2 rounded text-xs" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '3px solid rgb(239, 68, 68)' }}>
+                                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div>
+                                              <div style={{ color: 'rgb(220, 38, 38)', fontWeight: 600 }}>Rejection Reason</div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>{it.exit_note.rejection_reason}</div>
                                             </div>
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                          <div className="flex-1">
-                                            <div className="text-sm" style={{ fontWeight: 600 }}>
-                                              IM8
-                                            </div>
-                                            <div className="text-xs opacity-60 mt-1">
-                                              Status: {formatApprovalStatus(it.im8?.status)}
+                                      {/* IM8 */}
+                                      <div className="rounded-lg p-4 bg-muted">
+                                        <div className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>IM8</div>
+                                            <div className="text-xs mt-1 flex items-center gap-1.5" style={{ color: getStatusColor(it.im8?.status) }}>
+                                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getStatusColor(it.im8?.status) }} />
+                                              {formatApprovalStatus(it.im8?.status)}
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-2 sm:flex-shrink-0">
-                                          {it.im8 && (it.im8.file_path || it.im8.file_url) && (
-                                            <button
-                                              type="button"
-                                              className="inline-flex items-center gap-2 px-3 py-2.5 rounded border text-sm"
-                                              style={{ borderColor: 'var(--border)' }}
-                                              onClick={async () => {
-                                                try {
-                                                  const { url } = await getOpsApprovalSignedUrl(it.im8!.id);
-                                                  window.open(url, '_blank', 'noreferrer');
-                                                } catch (e) {
-                                                  alert(String(e));
-                                                }
-                                              }}
-                                            >
-                                              <Eye className="w-4 h-4" />
-                                              View
-                                            </button>
-                                          )}
-
-                                          <button
-                                            type="button"
-                                            onClick={() => pickFile(it.cargo_id, 'IM8')}
-                                            disabled={!canUploadOptional || Boolean(busy[im8Key]) || Boolean(it.im8 && it.im8.status !== 'REJECTED')}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded border transition-colors disabled:opacity-50"
-                                            style={{ borderColor: 'var(--border)' }}
-                                          >
-                                            <Upload className="w-4 h-4" />
-                                            <span className="text-sm">
+                                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {it.im8 && (it.im8.file_path || it.im8.file_url) && (
+                                              <Button variant="outline"
+                                                onClick={async () => {
+                                                  try {
+                                                    const { url } = await getOpsApprovalSignedUrl(it.im8!.id);
+                                                    window.open(url, '_blank', 'noreferrer');
+                                                  } catch (e) {
+                                                    toast({ type: 'error', message: 'Failed to open document' });
+                                                  }
+                                                }}>
+                                                <Eye className="w-3.5 h-3.5" /> View
+                                              </Button>
+                                            )}
+                                            <Button onClick={() => pickFile(it.cargo_id, 'IM8')}
+                                              disabled={!canUploadOptional || Boolean(busy[im8Key]) || Boolean(it.im8 && it.im8.status !== 'REJECTED')}
+                                              className="text-xs">
+                                              <Upload className="w-3.5 h-3.5" />
                                               {busy[im8Key]
-                                                ? it.im8?.status === 'REJECTED'
-                                                  ? 'Re-uploading IM8…'
-                                                  : 'Uploading IM8…'
+                                                ? it.im8?.status === 'REJECTED' ? 'Re-uploading…' : 'Uploading…'
                                                 : it.im8
-                                                  ? it.im8.status === 'REJECTED'
-                                                    ? 'Re-upload IM8'
-                                                    : 'Uploaded'
-                                                  : 'Upload IM8'}
-                                            </span>
-                                          </button>
-                                        </div>
+                                                  ? it.im8.status === 'REJECTED' ? 'Re-upload' : 'Uploaded'
+                                                  : 'Upload'}
+                                            </Button>
+                                          </div>
                                         </div>
                                         {it.im8?.status === 'REJECTED' && it.im8?.rejection_reason && (
-                                          <div 
-                                            className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs" 
-                                            style={{ 
-                                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                              borderLeft: '3px solid rgb(239, 68, 68)' 
-                                            }}
-                                          >
-                                            <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
-                                            <div className="flex-1">
-                                              <div className="font-semibold mb-0.5" style={{ color: 'rgb(220, 38, 38)' }}>
-                                                Rejection Reason
-                                              </div>
-                                              <div style={{ color: 'rgb(185, 28, 28)' }}>
-                                                {it.im8.rejection_reason}
-                                              </div>
+                                          <div className="flex items-start gap-2 mt-3 px-3 py-2 rounded text-xs" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '3px solid rgb(239, 68, 68)' }}>
+                                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'rgb(239, 68, 68)' }} />
+                                            <div>
+                                              <div style={{ color: 'rgb(220, 38, 38)', fontWeight: 600 }}>Rejection Reason</div>
+                                              <div style={{ color: 'rgb(185, 28, 28)' }}>{it.im8.rejection_reason}</div>
                                             </div>
                                           </div>
                                         )}

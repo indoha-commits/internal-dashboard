@@ -1,0 +1,18 @@
+/* ── Hide scrollbars globally ── */
+aside, .sidebar-scroll, body, html, #root, main,
+.page-content, .page-container,
+.max-w-6xl, .max-w-7xl {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+aside::-webkit-scrollbar, .sidebar-scroll::-webkit-scrollbar,
+body::-webkit-scrollbar, html::-webkit-scrollbar, #root::-webkit-scrollbar,
+main::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Contrast-safe text fallback (low specificity — override with component styles) ── */
+.opacity-60 { opacity: 1; color: var(--text-secondary); }
+.opacity-50 { opacity: 1; color: var(--text-secondary); }
+.opacity-40 { opacity: 1; color: var(--text-tertiary);  }
+.opacity-70 { opacity: 1; color: var(--text-secondary); }

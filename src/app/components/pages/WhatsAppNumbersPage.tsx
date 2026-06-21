@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Phone, Plus, Trash2, Shield, Pencil, AlertCircle, X } from 'lucide-react';
+import { Phone, Plus, Trash2, Shield, Pencil, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { SelectField } from '@/app/components/ui/select-field';
+import { FormField } from '@/app/components/ui/form-field';
+import { Button } from '@/app/components/ui/button';
 import {
   listOpsNumbers,
   addOpsNumber,
@@ -67,8 +70,7 @@ function AddNumberForm({
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Phone number</label>
+        <FormField label="Phone number" className="space-y-1">
           <input
             type="tel"
             value={phone}
@@ -77,20 +79,17 @@ function AddNumberForm({
             className="w-full border rounded px-3 py-2 text-sm bg-background"
             required
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Role</label>
-          <select
+        </FormField>
+        <FormField label="Role" className="space-y-1">
+          <SelectField
             value={role}
             onChange={(e) => setRole(e.target.value as 'ops' | 'company_admin')}
-            className="w-full border rounded px-3 py-2 text-sm bg-background"
           >
             <option value="ops">Ops</option>
             <option value="company_admin">Company Admin</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Label (optional)</label>
+          </SelectField>
+        </FormField>
+        <FormField label="Label (optional)" className="space-y-1">
           <input
             type="text"
             value={label}
@@ -98,15 +97,15 @@ function AddNumberForm({
             placeholder="e.g. Alice - ops lead"
             className="w-full border rounded px-3 py-2 text-sm bg-background"
           />
-        </div>
+        </FormField>
       </div>
       <div className="flex gap-2 pt-1">
-        <button type="submit" disabled={saving} className="btn-primary text-sm">
+        <Button type="submit" disabled={saving} className="text-sm">
           {saving ? 'Adding…' : 'Add number'}
-        </button>
-        <button type="button" onClick={onCancel} className="btn-secondary text-sm">
+        </Button>
+        <Button type="button" onClick={onCancel} variant="outline" className="text-sm">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -153,19 +152,16 @@ function EditNumberForm({
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Role</label>
-          <select
+        <FormField label="Role" className="space-y-1">
+          <SelectField
             value={role}
             onChange={(e) => setRole(e.target.value as 'ops' | 'company_admin')}
-            className="w-full border rounded px-3 py-2 text-sm bg-background"
           >
             <option value="ops">Ops</option>
             <option value="company_admin">Company Admin</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Label</label>
+          </SelectField>
+        </FormField>
+        <FormField label="Label" className="space-y-1">
           <input
             type="text"
             value={label}
@@ -173,15 +169,15 @@ function EditNumberForm({
             placeholder="e.g. Alice - ops lead"
             className="w-full border rounded px-3 py-2 text-sm bg-background"
           />
-        </div>
+        </FormField>
       </div>
       <div className="flex gap-2 pt-1">
-        <button type="submit" disabled={saving} className="btn-primary text-sm">
+        <Button type="submit" disabled={saving} className="text-sm">
           {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel} className="btn-secondary text-sm">
+        </Button>
+        <Button onClick={onCancel} variant="outline" className="text-sm">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -200,7 +196,7 @@ export function WhatsAppNumbersPage() {
     setError(null);
     try {
       const data = await listOpsNumbers();
-      setNumbers(data.numbers);
+      setNumbers(data.numbers ?? []);
     } catch (e: any) {
       setError(String(e?.message ?? e));
     } finally {
@@ -242,18 +238,17 @@ export function WhatsAppNumbersPage() {
         <div>
           <h1 className="page-title">WhatsApp Numbers</h1>
           <p className="page-desc mt-1">
-            Manage ops team WhatsApp numbers that receive real-time alerts about document intake, Jarvis extraction results, and shipment updates.
+            Manage WhatsApp numbers for real-time document intake, extraction, and shipment alerts.
           </p>
         </div>
         {!showAdd && (
-          <button
-            type="button"
+          <Button
             onClick={() => setShowAdd(true)}
-            className="btn-primary whitespace-nowrap"
+            className="whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             Add number
-          </button>
+          </Button>
         )}
       </div>
 
@@ -281,7 +276,7 @@ export function WhatsAppNumbersPage() {
         />
       )}
 
-      {numbers.length === 0 && !showAdd ? (
+      {(numbers?.length ?? 0) === 0 && !showAdd ? (
         <div className="empty-state">
           <Phone className="w-8 h-8 opacity-40" />
           <p className="empty-title">No WhatsApp numbers configured</p>

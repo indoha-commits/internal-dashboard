@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, ExternalLink, Search, Loader2 } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
   getOpsPendingDocuments,
   verifyDocument,
   type OpsPendingDocumentsResponse,
 } from '@/app/api/ops';
+import { CrossPageStatus } from '@/app/components/CrossPageStatus';
+import { useToast } from '@/app/hooks/useToast';
+import { Button } from '@/app/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 
 type PendingDoc = OpsPendingDocumentsResponse['documents'][number];
 
@@ -33,6 +37,7 @@ export function PendingDocumentsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [verifyState, setVerifyState] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
+  const { toast } = useToast();
 
   const refresh = async () => {
     const res = await getOpsPendingDocuments();
@@ -135,7 +140,7 @@ export function PendingDocumentsPage() {
         delete next[doc.id];
         return next;
       });
-      alert(e instanceof Error ? e.message : String(e));
+      toast({ type: 'error', message: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy((m) => ({ ...m, [doc.id]: false }));
     }
@@ -155,7 +160,7 @@ export function PendingDocumentsPage() {
       const res = await getOpsDocumentSignedUrl(doc.id);
       window.open(res.url, '_blank', 'noopener,noreferrer');
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      toast({ type: 'error', message: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy((m) => ({ ...m, [`open:${doc.id}`]: false }));
     }
@@ -166,35 +171,42 @@ export function PendingDocumentsPage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1>Pending Documents</h1>
-        <p className="text-sm opacity-60 mt-2">Documents awaiting ops verification</p>
+        <h1 className="page-title">Pending Documents</h1>
+        <p className="page-desc mt-2">Documents awaiting ops team verification</p>
       </div>
 
+      <CrossPageStatus />
+
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+        <label className="sr-only" htmlFor="search-pending">Search pending documents</label>
+        <div className="flex-1 search-bar">
+          <Search className="w-4 h-4" style={{ color: '#2a2b2f' }} />
           <input
+            id="search-pending"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by client, cargo id, or document type"
-            className="w-full pl-10 pr-4 py-2.5 rounded border bg-transparent"
-            style={{ borderColor: 'var(--border)' }}
+            aria-label="Search pending documents"
           />
         </div>
-        <div className="text-sm opacity-60 sm:whitespace-nowrap">{totalDocs} pending</div>
+        <div className="text-sm body-text sm:whitespace-nowrap">{totalDocs} pending</div>
       </div>
 
-      <div className="bg-card rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <div className="bg-card rounded-lg border border-default">
         {loading ? (
-          <div className="px-6 py-8 text-sm opacity-60">Loading…</div>
+          <div className="px-6 py-8 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading…</div>
         ) : error ? (
           <div className="px-6 py-8 text-sm" style={{ color: 'var(--destructive)' }}>
             {error}
           </div>
         ) : grouped.length === 0 ? (
-          <div className="px-6 py-8 text-sm opacity-60">No pending documents found.</div>
+          <div className="empty-state">
+            <FileText size={28} color="#1c1d20" />
+            <p className="empty-title">No pending documents</p>
+            <p className="empty-sub">Documents appear here when clients upload them</p>
+          </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                <div className="divide-y border-default">
             {grouped.map((client) => {
               const clientOpen = expandedClients.has(client.clientName);
               return (
@@ -205,13 +217,13 @@ export function PendingDocumentsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="text-left">
-                        <div className="text-sm" style={{ fontWeight: 600 }}>
+                        <div className="text-sm font-semibold">
                           {client.clientName}
                         </div>
-                        <div className="text-xs opacity-60 mt-1">{client.cargos.length} cargos</div>
+                        <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{client.cargos.length} {client.cargos.length === 1 ? 'cargo' : 'cargos'}</div>
                       </div>
                     </div>
-                    <div className="text-sm opacity-60">{clientOpen ? '−' : '+'}</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{clientOpen ? '−' : '+'}</div>
                   </button>
 
                   {clientOpen && (
@@ -222,8 +234,7 @@ export function PendingDocumentsPage() {
                           return (
                             <div
                               key={cargo.cargoId}
-                              className="rounded border"
-                              style={{ borderColor: 'var(--border)' }}
+                              className="rounded border border-default"
                             >
                               <button
                                 onClick={() => toggleGroup(cargo.cargoId)}
@@ -233,46 +244,39 @@ export function PendingDocumentsPage() {
                                   <span className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
                                     {cargo.cargoId}
                                   </span>
-                                  <span className="text-xs opacity-60">({cargo.documents.length} docs)</span>
+                                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>({cargo.documents.length} docs)</span>
                                 </div>
-                                <div className="text-sm opacity-60">{cargoOpen ? '−' : '+'}</div>
+                                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{cargoOpen ? '−' : '+'}</div>
                               </button>
 
                               {cargoOpen && (
-                                <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          <div className="divide-y border-default">
                                   {cargo.documents.map((doc) => {
                                     const verifying = Boolean(busy[doc.id]);
                                     const opening = Boolean(busy[`open:${doc.id}`]);
                                     return (
                                       <div key={doc.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                         <div>
-                                          <div className="text-sm" style={{ fontWeight: 500 }}>
+                                          <div className="text-sm font-medium">
                                             {formatDocType(doc.document_type)}
                                           </div>
-                                          <div className="text-xs opacity-60 mt-1">
+                                          <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
                                         </div>
 
                                         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">
-                                          <button
+                                          <Button
                                             disabled={opening}
                                             onClick={() => handleOpenSignedUrl(doc)}
-                                            className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded border text-xs sm:text-sm disabled:opacity-60"
-                                            style={{ borderColor: 'var(--border)' }}
+                                            variant="outline"
                                           >
                                             <ExternalLink className="w-4 h-4" />
                                             Open
-                                          </button>
-                                          <button
+                                          </Button>
+                                          <Button
                                             disabled={verifying}
                                             onClick={() => handleVerify(doc, 'approve')}
-                                            className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded border text-xs sm:text-sm disabled:opacity-60"
-                                            style={
-                                              verifyState[doc.id] === 'done'
-                                                ? { borderColor: 'rgb(34, 197, 94)', color: 'rgb(34, 197, 94)' }
-                                                : { borderColor: 'var(--primary)', color: 'var(--primary)' }
-                                            }
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
                                               <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
@@ -284,18 +288,18 @@ export function PendingDocumentsPage() {
                                               : verifyState[doc.id] === 'done'
                                                 ? 'Approved'
                                                 : 'Approve'}
-                                          </button>
-                                          <button
+                                          </Button>
+                                          <Button
                                             disabled={verifying}
                                             onClick={() => setRejectDialog({ doc, reason: '' })}
-                                            className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 px-2 sm:px-3 py-2 sm:py-2.5 rounded border text-xs sm:text-sm disabled:opacity-60"
-                                            style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
+                                            variant="outline"
+                                            className="text-destructive border-destructive"
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
                                               <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
                                             ) : null}
                                             {verifyState[doc.id] === 'loading' ? 'Rejecting…' : 'Reject'}
-                                          </button>
+                                          </Button>
                                         </div>
                                       </div>
                                     );
@@ -315,50 +319,36 @@ export function PendingDocumentsPage() {
         )}
       </div>
 
-      {rejectDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-lg rounded-lg border bg-card" style={{ borderColor: 'var(--border)' }}>
-            <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <div className="text-sm" style={{ fontWeight: 600 }}>
-                Rejection reason
-              </div>
-            </div>
-            <div className="p-4 space-y-3">
-              <label className="text-sm opacity-70" htmlFor="reject-reason">
-                Provide a reason for rejection
-              </label>
-              <textarea
-                id="reject-reason"
-                value={rejectDialog.reason}
-                onChange={(e) => setRejectDialog((prev) => (prev ? { ...prev, reason: e.target.value } : prev))}
-                rows={4}
-                className="w-full rounded border bg-background px-3 py-2 text-sm"
-                style={{ borderColor: 'var(--border)' }}
-                placeholder="Explain what needs to be updated"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRejectDialog(null)}
-                  className="px-3 py-2 rounded border text-xs"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void submitReject()}
-                  disabled={!rejectDialog.reason.trim()}
-                  className="px-3 py-2 rounded text-xs text-white"
-                  style={{ backgroundColor: 'var(--destructive)' }}
-                >
-                  Submit rejection
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={rejectDialog !== null} onOpenChange={(open) => { if (!open) setRejectDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejection reason</DialogTitle>
+          </DialogHeader>
+          <label className="text-sm" style={{ color: 'var(--text-secondary)' }} htmlFor="reject-reason">
+            Provide a reason for rejection
+          </label>
+          <textarea
+            id="reject-reason"
+            value={rejectDialog?.reason ?? ''}
+            onChange={(e) => setRejectDialog((prev) => (prev ? { ...prev, reason: e.target.value } : prev))}
+            rows={4}
+            className="w-full rounded border border-default bg-background px-3 py-2 text-sm"
+            placeholder="Explain what needs to be updated"
+          />
+          <DialogFooter>
+            <Button onClick={() => setRejectDialog(null)} variant="outline">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitReject()}
+              disabled={!rejectDialog?.reason.trim()}
+              variant="destructive"
+            >
+              Submit rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
