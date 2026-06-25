@@ -425,6 +425,34 @@ select.form-input { cursor: pointer; }
   opacity: 0.5;
 }
 
+/* ── Mobile responsive overrides ── */
+@media (max-width: 640px) {
+  .kpi-value {
+    font-size: 22px;
+  }
+  .quick-status-card {
+    min-width: 130px;
+    padding: 10px 12px;
+  }
+  .quick-status-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .quick-status-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .quick-status-info .value {
+    font-size: 20px;
+  }
+  .quick-status-info .label {
+    font-size: 10px;
+  }
+  .page-title {
+    font-size: 22px;
+  }
+}
+
 /* ── Animations ── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

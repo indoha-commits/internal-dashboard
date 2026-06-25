@@ -31,7 +31,7 @@ function KPITile({ label, value, icon: Icon, iconBgClass, route }: KPITileProps)
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       </div>
-      <div className="kpi-value text-3xl font-semibold mt-2">{value}</div>
+      <div className="kpi-value text-2xl sm:text-3xl font-semibold mt-2">{value}</div>
     </div>
   );
 }

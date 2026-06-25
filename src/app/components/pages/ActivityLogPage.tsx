@@ -33,15 +33,15 @@ export function ActivityLogPage() {
             <p className="empty-sub">System events appear here as they happen</p>
           </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          <div className="divide-y overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
             {rows.map((entry, idx) => (
-              <div key={idx} className="px-6 py-4 hover:bg-muted/20 transition-colors">
-                <div className="flex items-start gap-6">
-                  <div className="w-48 flex-shrink-0">
+              <div key={idx} className="px-4 sm:px-6 py-4 hover:bg-muted/20 transition-colors min-w-[600px]">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-6">
+                  <div className="w-full sm:w-48 flex-shrink-0">
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(entry.timestamp).toLocaleString()}</div>
                   </div>
 
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="text-sm font-medium">
                         {String(entry.action).replace(/_/g, ' ')}
@@ -59,7 +59,7 @@ export function ActivityLogPage() {
                     )}
                   </div>
 
-                  <div className="w-32 flex-shrink-0 text-right">
+                  <div className="w-full sm:w-32 flex-shrink-0 sm:text-right">
                     <span
                       className="text-xs px-2.5 py-1 rounded font-medium"
                       style={{

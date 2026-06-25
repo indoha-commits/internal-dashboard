@@ -86,13 +86,13 @@ export function ValidationPage() {
       />
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
         <div className="bg-card rounded-lg p-5 border border-default">
           <div className="flex items-center gap-3 mb-2">
             <Upload className="w-5 h-5" style={{ color: '#10b981' }} />
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Awaiting Upload</div>
           </div>
-          <div className="text-3xl kpi-value">
+          <div className="text-2xl sm:text-3xl kpi-value">
             {summary.pendingUpload}
           </div>
         </div>
@@ -101,7 +101,7 @@ export function ValidationPage() {
             <Inbox className="w-5 h-5" style={{ color: '#5e6ad2' }} />
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Pending Validation</div>
           </div>
-          <div className="text-3xl kpi-value">
+          <div className="text-2xl sm:text-3xl kpi-value">
             {summary.pendingValidation}
           </div>
         </div>
@@ -110,7 +110,7 @@ export function ValidationPage() {
             <CheckCircle className="w-5 h-5" style={{ color: '#22c55e' }} />
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Validated / Failed</div>
           </div>
-          <div className="text-3xl kpi-value">
+          <div className="text-2xl sm:text-3xl kpi-value">
             {summary.validated + summary.failed}
           </div>
         </div>

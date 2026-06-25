@@ -257,11 +257,8 @@ export default function App() {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm tracking-wide" style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--foreground)' }}>
-            Galaxy Logistics
-          </div>
-          <div className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>Operations Cockpit</div>
+        <div className="min-w-0 flex-1 flex items-center">
+          <img src="/indataflow-logo.png" alt="InDataFlow" className="h-8 w-auto brightness-0 invert" />
         </div>
         <button
           type="button"
@@ -274,7 +271,7 @@ export default function App() {
 
       {/* Mobile nav drawer */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="p-0" style={{ backgroundColor: 'var(--sidebar)' }}>
+        <SheetContent side="left" className="p-0 overflow-y-auto" style={{ backgroundColor: 'var(--sidebar)' }}>
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation menu</SheetTitle>
             <SheetDescription>Operations dashboard pages</SheetDescription>
@@ -288,7 +285,7 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className={`min-h-screen px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'}`}>
+      <main className={`min-h-screen w-full px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'}`}>
         <div className="hidden md:flex justify-end items-center gap-3 mb-6">
           <button
             type="button"

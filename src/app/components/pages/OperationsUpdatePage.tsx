@@ -183,9 +183,9 @@ export function OperationsUpdatePage() {
       <CrossPageStatus />
 
       {/* Summary bar */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
             <AlertCircle className="w-5 h-5" style={{ color: '#c7a14a' }} />
           </div>
           <div>
@@ -194,7 +194,7 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
             <MapPin className="w-5 h-5" style={{ color: '#c7a14a' }} />
           </div>
           <div>
@@ -203,7 +203,7 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(46,74,98,0.12)' }}>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(46,74,98,0.12)' }}>
             <Warehouse className="w-5 h-5" style={{ color: '#2e4a62' }} />
           </div>
           <div>
@@ -212,7 +212,7 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(34,197,94,0.12)' }}>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(34,197,94,0.12)' }}>
             <CheckCircle className="w-5 h-5" style={{ color: '#22c55e' }} />
           </div>
           <div>
@@ -247,7 +247,7 @@ export function OperationsUpdatePage() {
 
         {showManualForm && (
           <div id="manual-action-panel" className="border-t border-default px-6 py-5">
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
               <div>
                 <label htmlFor="manual-cargo" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Select Cargo
@@ -392,7 +392,7 @@ export function OperationsUpdatePage() {
                         </div>
 
                         {/* Detail grid */}
-                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-x-6 gap-y-2 text-sm">
                           <div>
                             <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Client</span>
                             <div className="font-medium mt-0.5">{action.clientName}</div>
