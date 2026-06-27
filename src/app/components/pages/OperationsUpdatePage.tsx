@@ -182,10 +182,10 @@ export function OperationsUpdatePage() {
 
       <CrossPageStatus />
 
-      {/* Summary bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      {/* Desktop summary bar */}
+      <div className="hidden md:grid md:grid-cols-4 gap-4 mb-8">
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
             <AlertCircle className="w-5 h-5" style={{ color: '#c7a14a' }} />
           </div>
           <div>
@@ -194,7 +194,7 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(199,161,74,0.12)' }}>
             <MapPin className="w-5 h-5" style={{ color: '#c7a14a' }} />
           </div>
           <div>
@@ -203,7 +203,7 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(46,74,98,0.12)' }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(46,74,98,0.12)' }}>
             <Warehouse className="w-5 h-5" style={{ color: '#2e4a62' }} />
           </div>
           <div>
@@ -212,13 +212,33 @@ export function OperationsUpdatePage() {
           </div>
         </div>
         <div className="bg-card rounded-xl border border-default p-5 flex items-center gap-4">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(34,197,94,0.12)' }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(34,197,94,0.12)' }}>
             <CheckCircle className="w-5 h-5" style={{ color: '#22c55e' }} />
           </div>
           <div>
             <div className="text-xs font-medium uppercase tracking-wider" style={{ color: '#22c55e' }}>Completed</div>
             <div className="text-2xl font-bold mt-0.5">{completedRecords.length}</div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile summary bar */}
+      <div className="block md:hidden grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-card rounded-xl border border-default p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#c7a14a' }}>Total Pending</div>
+          <div className="text-xl font-bold">{pendingActions.length}</div>
+        </div>
+        <div className="bg-card rounded-xl border border-default p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#c7a14a' }}>Verification</div>
+          <div className="text-xl font-bold">{pendingActions.filter((a) => a.actionType === 'PHYSICAL_VERIFICATION').length}</div>
+        </div>
+        <div className="bg-card rounded-xl border border-default p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#2e4a62' }}>Warehouse</div>
+          <div className="text-xl font-bold">{pendingActions.filter((a) => a.actionType === 'WAREHOUSE_ARRIVAL').length}</div>
+        </div>
+        <div className="bg-card rounded-xl border border-default p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#22c55e' }}>Completed</div>
+          <div className="text-xl font-bold">{completedRecords.length}</div>
         </div>
       </div>
 
@@ -247,7 +267,7 @@ export function OperationsUpdatePage() {
 
         {showManualForm && (
           <div id="manual-action-panel" className="border-t border-default px-6 py-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+            <div className="hidden md:grid md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label htmlFor="manual-cargo" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                   Select Cargo
@@ -295,6 +315,53 @@ export function OperationsUpdatePage() {
                   Add to Queue
                 </Button>
               </div>
+            </div>
+
+            {/* Mobile manual action form */}
+            <div className="block md:hidden space-y-3 mb-4">
+              <div>
+                <label htmlFor="manual-cargo-mobile" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Select Cargo
+                </label>
+                <SelectField
+                  id="manual-cargo-mobile"
+                  value={selectedCargoId}
+                  onChange={(e) => setSelectedCargoId(e.target.value)}
+                  aria-describedby="manual-cargo-desc-mobile"
+                >
+                  <option value="">Choose a validated cargo…</option>
+                  {cargoOptions.map((cargo) => (
+                    <option key={cargo.cargoId} value={cargo.cargoId}>
+                      {cargo.containerId} · {cargo.clientName}
+                    </option>
+                  ))}
+                </SelectField>
+                <p id="manual-cargo-desc-mobile" className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                  Only validated cargos are available
+                </p>
+              </div>
+              <div>
+                <label htmlFor="manual-action-type-mobile" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Action Type
+                </label>
+                <SelectField
+                  id="manual-action-type-mobile"
+                  value={selectedActionType}
+                  onChange={(e) => setSelectedActionType(e.target.value as any)}
+                >
+                  {manualActionOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </SelectField>
+              </div>
+              <Button
+                disabled={!selectedCargoId}
+                onClick={handleAddManualAction}
+                className="w-full"
+              >
+                <Plus className="w-4 h-4" />
+                Add to Queue
+              </Button>
             </div>
 
             {selectedActionType && (
@@ -392,7 +459,7 @@ export function OperationsUpdatePage() {
                         </div>
 
                         {/* Detail grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-x-6 gap-y-2 text-sm">
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
                           <div>
                             <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Client</span>
                             <div className="font-medium mt-0.5">{action.clientName}</div>

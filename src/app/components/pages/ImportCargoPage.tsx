@@ -137,8 +137,8 @@ export function ImportCargoPage() {
             <span className="text-sm font-semibold">Cargo Details</span>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div className="col-span-1 sm:col-span-2 text-xs opacity-70">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="col-span-1 md:col-span-2 text-xs opacity-70">
                 Cargo IDs are provided by your shipment records.
               </div>
               <div>
@@ -206,7 +206,7 @@ export function ImportCargoPage() {
                 </p>
               </div>
 
-              <div className="col-span-2">
+              <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm opacity-70 mb-2 font-medium">
                   Client
                 </label>
@@ -283,7 +283,7 @@ export function ImportCargoPage() {
               </button>
               {showFinance && (
                 <div className="border-t border-default p-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField label="DMC" htmlFor="dmc-input">
                       <input id="dmc-input" type="text" value={dmc} onChange={(e) => setDmc(e.target.value)} placeholder="e.g. DMC-2026-0412" className="form-input" />
                     </FormField>

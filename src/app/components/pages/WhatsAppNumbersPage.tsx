@@ -285,71 +285,120 @@ export function WhatsAppNumbersPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left px-4 py-3 font-medium">Phone number</th>
-                <th className="text-left px-4 py-3 font-medium">Role</th>
-                <th className="text-left px-4 py-3 font-medium">Label</th>
-                <th className="text-right px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {numbers.map((num) => (
-                <tr key={num.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3">
-                    <code className="text-sm">+{num.phone_number}</code>
-                  </td>
-                  <td className="px-4 py-3">
-                    <RoleBadge role={num.role} />
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
-                    {num.label || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {editingId === num.id ? (
-                        <EditNumberForm
-                          number={num}
-                          onSaved={() => {
-                            setEditingId(null);
-                            load();
-                          }}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(num.id)}
-                            className="p-1.5 rounded hover:bg-muted/50"
-                            title="Edit"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(num.id)}
-                            disabled={deletingId === num.id}
-                            className="p-1.5 rounded hover:bg-destructive/10 text-destructive"
-                            title="Delete"
-                          >
-                            {deletingId === num.id ? (
-                              <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
-                            ) : (
-                              <Trash2 className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left px-4 py-3 font-medium">Phone number</th>
+                  <th className="text-left px-4 py-3 font-medium">Role</th>
+                  <th className="text-left px-4 py-3 font-medium">Label</th>
+                  <th className="text-right px-4 py-3 font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {numbers.map((num) => (
+                  <tr key={num.id} className="border-b last:border-b-0">
+                    <td className="px-4 py-3">
+                      <code className="text-sm">+{num.phone_number}</code>
+                    </td>
+                    <td className="px-4 py-3">
+                      <RoleBadge role={num.role} />
+                    </td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                      {num.label || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {editingId === num.id ? (
+                          <EditNumberForm
+                            number={num}
+                            onSaved={() => {
+                              setEditingId(null);
+                              load();
+                            }}
+                            onCancel={() => setEditingId(null)}
+                          />
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(num.id)}
+                              className="p-1.5 rounded hover:bg-muted/50"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(num.id)}
+                              disabled={deletingId === num.id}
+                              className="p-1.5 rounded hover:bg-destructive/10 text-destructive"
+                              title="Delete"
+                            >
+                              {deletingId === num.id ? (
+                                <div className="w-3.5 h-3.5 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="block md:hidden space-y-3">
+            {numbers.map((num) => (
+              <div key={num.id} className="bg-card rounded-lg border border-default p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <code className="text-sm font-medium">+{num.phone_number}</code>
+                  <RoleBadge role={num.role} />
+                </div>
+                <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  {num.label || 'No label'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(num.id)}
+                    className="flex-1 py-2 rounded border text-sm font-medium hover:bg-muted/50"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(num.id)}
+                    disabled={deletingId === num.id}
+                    className="flex-1 py-2 rounded border text-sm font-medium text-destructive hover:bg-destructive/10"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    {deletingId === num.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+                {editingId === num.id && (
+                  <div className="mt-3">
+                    <EditNumberForm
+                      number={num}
+                      onSaved={() => {
+                        setEditingId(null);
+                        load();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="text-xs space-y-1" style={{ color: 'var(--text-tertiary)' }}>

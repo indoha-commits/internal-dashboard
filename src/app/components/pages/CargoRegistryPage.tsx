@@ -836,7 +836,7 @@ export function CargoRegistryPage({
                   {clientsLoading && <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Loading clients…</div>}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Category</label>
                     <SelectField
@@ -890,7 +890,7 @@ export function CargoRegistryPage({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Origin</label>
                     <input
@@ -1063,7 +1063,7 @@ export function CargoRegistryPage({
                   {clientsLoading && <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Loading clients…</div>}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Category</label>
                     <SelectField
@@ -1120,7 +1120,7 @@ export function CargoRegistryPage({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Origin</label>
                     <input

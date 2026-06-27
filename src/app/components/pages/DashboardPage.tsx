@@ -31,7 +31,7 @@ function KPITile({ label, value, icon: Icon, iconBgClass, route }: KPITileProps)
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       </div>
-      <div className="kpi-value text-2xl sm:text-3xl font-semibold mt-2">{value}</div>
+      <div className="kpi-value text-3xl font-semibold mt-2">{value}</div>
     </div>
   );
 }
@@ -132,12 +132,44 @@ export function DashboardPage() {
         <p className="page-desc mt-2">Key metrics, pending actions, and urgent items across all operations</p>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8 sm:mb-12">
+      {/* Desktop KPI Grid */}
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-3 gap-4 lg:gap-6 mb-8 mb-12">
         <KPITile label="Documents Awaiting Verification" value={kpis?.pending_documents ?? 0} icon={FileText} iconBgClass="kpi-icon-amber" route="/pending-documents" />
         <KPITile label="Pending Validation" value={kpis?.pending_validation ?? 0} icon={Inbox} iconBgClass="kpi-icon-indigo" route="/validation-requests" />
         <KPITile label="Awaiting Upload" value={kpis?.awaiting_upload ?? 0} icon={Upload} iconBgClass="kpi-icon-emerald" route="/validation" />
         <KPITile label="Failed Validation" value={kpis?.failed_validation ?? 0} icon={XCircle} iconBgClass="kpi-icon-rose" route="/validation" />
+      </div>
+
+      {/* Mobile KPI Grid — 2-col compact */}
+      <div className="block md:hidden grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-card rounded-lg p-4 border border-default">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full kpi-icon-amber" />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>Awaiting Verification</span>
+          </div>
+          <div className="text-2xl font-semibold">{kpis?.pending_documents ?? 0}</div>
+        </div>
+        <div className="bg-card rounded-lg p-4 border border-default">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full kpi-icon-indigo" />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>Pending Validation</span>
+          </div>
+          <div className="text-2xl font-semibold">{kpis?.pending_validation ?? 0}</div>
+        </div>
+        <div className="bg-card rounded-lg p-4 border border-default">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full kpi-icon-emerald" />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>Awaiting Upload</span>
+          </div>
+          <div className="text-2xl font-semibold">{kpis?.awaiting_upload ?? 0}</div>
+        </div>
+        <div className="bg-card rounded-lg p-4 border border-default">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full kpi-icon-rose" />
+            <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>Failed Validation</span>
+          </div>
+          <div className="text-2xl font-semibold">{kpis?.failed_validation ?? 0}</div>
+        </div>
       </div>
 
       {/* Urgent Attention Section */}
@@ -171,63 +203,115 @@ export function DashboardPage() {
             <p className="empty-sub">All documents have been processed</p>
           </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {urgentDocs.map((doc) => {
-              const pendingDays = daysSince(doc.uploaded_at);
-              const viewing = Boolean(busy[`view:${doc.id}`]);
+          <>
+            {/* Desktop urgent rows */}
+            <div className="hidden md:block divide-y" style={{ borderColor: 'var(--border)' }}>
+              {urgentDocs.map((doc) => {
+                const pendingDays = daysSince(doc.uploaded_at);
+                const viewing = Boolean(busy[`view:${doc.id}`]);
 
-              return (
-                <div key={doc.id} className="px-6 py-4 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-3">
-                        <span className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
-                          {doc.cargo_id}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
-                        <span className="text-sm">{doc.client_name ?? 'Unknown Client'}</span>
-                      </div>
-                      <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{formatDocType(doc.document_type)}</div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div
-                          className="text-sm px-2.5 py-0.5 rounded inline-block font-medium"
-                          style={{
-                            backgroundColor:
-                              pendingDays >= 7 ? 'rgba(239,68,68,0.15)' :
-                              pendingDays >= 4 ? 'rgba(245,158,11,0.15)' :
-                              'rgba(107,114,128,0.15)',
-                            color:
-                              pendingDays >= 7 ? '#ef4444' :
-                              pendingDays >= 4 ? '#f59e0b' :
-                              '#9ca3af',
-                          }}
-                        >
-                          {pendingDays}d pending
+                return (
+                  <div key={doc.id} className="px-6 py-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-baseline gap-3">
+                          <span className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
+                            {doc.cargo_id}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
+                          <span className="text-sm">{doc.client_name ?? 'Unknown Client'}</span>
                         </div>
-                        <div className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                          Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
-                        </div>
+                        <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{formatDocType(doc.document_type)}</div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          disabled={viewing}
-                          onClick={() => void handleView(doc)}
-                          variant="outline"
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span className="text-sm">{viewing ? 'Opening...' : 'View'}</span>
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div
+                            className="text-sm px-2.5 py-0.5 rounded inline-block font-medium"
+                            style={{
+                              backgroundColor:
+                                pendingDays >= 7 ? 'rgba(239,68,68,0.15)' :
+                                pendingDays >= 4 ? 'rgba(245,158,11,0.15)' :
+                                'rgba(107,114,128,0.15)',
+                              color:
+                                pendingDays >= 7 ? '#ef4444' :
+                                pendingDays >= 4 ? '#f59e0b' :
+                                '#9ca3af',
+                            }}
+                          >
+                            {pendingDays}d pending
+                          </div>
+                          <div className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                            Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            disabled={viewing}
+                            onClick={() => void handleView(doc)}
+                            variant="outline"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="text-sm">{viewing ? 'Opening...' : 'View'}</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Mobile urgent cards */}
+            <div className="block md:hidden space-y-2 p-3">
+              {urgentDocs.map((doc) => {
+                const pendingDays = daysSince(doc.uploaded_at);
+                const viewing = Boolean(busy[`view:${doc.id}`]);
+
+                return (
+                  <div key={doc.id} className="bg-card rounded-lg border border-default p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
+                        {doc.cargo_id}
+                      </span>
+                      <div
+                        className="text-xs px-2 py-0.5 rounded font-medium"
+                        style={{
+                          backgroundColor:
+                            pendingDays >= 7 ? 'rgba(239,68,68,0.15)' :
+                            pendingDays >= 4 ? 'rgba(245,158,11,0.15)' :
+                            'rgba(107,114,128,0.15)',
+                          color:
+                            pendingDays >= 7 ? '#ef4444' :
+                            pendingDays >= 4 ? '#f59e0b' :
+                            '#9ca3af',
+                        }}
+                      >
+                        {pendingDays}d pending
+                      </div>
+                    </div>
+                    <div className="text-xs text-linear_dim my-1">{doc.client_name ?? 'Unknown Client'}</div>
+                    <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{formatDocType(doc.document_type)}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
+                      </div>
+                      <Button
+                        disabled={viewing}
+                        onClick={() => void handleView(doc)}
+                        variant="outline"
+                        className="text-xs py-1.5 h-auto"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {viewing ? 'Opening...' : 'View'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
