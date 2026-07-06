@@ -233,7 +233,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       {/* Desktop sidebar */}
       <Sidebar
         currentPage={currentPageMemo}
@@ -285,7 +285,7 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className={`min-h-screen w-full px-4 py-4 sm:px-6 sm:py-6 md:pr-12 md:pl-6 md:py-10 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-0' : 'md:ml-64'}`}>
+      <main className="flex-1 min-w-0 px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10">
         <div className="hidden md:flex justify-end items-center gap-3 mb-6">
           <button
             type="button"

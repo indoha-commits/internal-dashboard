@@ -238,7 +238,7 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="page-title">Cargo Timeline</h1>
         <p className="page-desc mt-2">Authoritative event history for every cargo</p>

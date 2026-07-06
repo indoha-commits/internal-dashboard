@@ -204,7 +204,7 @@ export function RequestValidationPage() {
   };
 
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-8">
         <h1 className="page-title">Validation Requests</h1>
         <p className="page-desc mt-2">

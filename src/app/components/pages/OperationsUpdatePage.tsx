@@ -156,7 +156,7 @@ export function OperationsUpdatePage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="page-title">Operations Update</h1>
         <p className="page-desc mt-2">Record physical verification, warehouse arrival, and transit events</p>
@@ -174,7 +174,7 @@ export function OperationsUpdatePage() {
   }
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h1 className="page-title">Operations Update</h1>
         <p className="page-desc mt-2">Record physical verification and warehouse arrival events</p>
