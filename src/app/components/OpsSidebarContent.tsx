@@ -1,4 +1,5 @@
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, User } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, ChevronUp } from 'lucide-react';
 import { sessionStore } from '@/app/auth/sessionStore';
 
 interface OpsSidebarContentProps {
@@ -78,6 +79,8 @@ function NavButton({
 }
 
 export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
   return (
     <div className="flex flex-col min-h-full whitespace-nowrap">
       {/* Navigation */}
@@ -109,32 +112,40 @@ export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavig
 
       {/* Bottom actions — sticky at bottom */}
       <div className="sticky bottom-0 border-t" style={{ backgroundColor: 'var(--sidebar)', borderColor: 'var(--sidebar-border)' }}>
-        <div className="px-4 py-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowUserMenu((v) => !v)}
+          className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:opacity-80 transition-opacity"
+          style={{ color: 'var(--sidebar-foreground)' }}
+        >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
           >
             GL
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium truncate" style={{ color: 'var(--sidebar-foreground)' }}>
+          <div className="min-w-0 flex-1 text-left">
+            <div className="text-sm font-medium truncate">
               Internal Dashboard
             </div>
-            <div className="text-xs truncate" style={{ color: 'var(--sidebar-foreground)', opacity: 0.5 }}>
-              {sessionStore.getId()?.slice(0, 8) ?? '—'}
-            </div>
           </div>
-        </div>
+          <ChevronUp
+            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${showUserMenu ? '' : 'rotate-180'}`}
+            style={{ opacity: 0.5 }}
+          />
+        </button>
 
-        <div className="px-3 pb-4">
-          <button
-            onClick={onLogout}
-            className="sidebar-nav-btn"
-          >
-            <LogOut className="w-4 h-4" strokeWidth={1.5} />
-            <span className="text-sm" style={{ fontWeight: 400 }}>Logout</span>
-          </button>
-        </div>
+        {showUserMenu && (
+          <div className="px-3 pb-4 animate-in slide-in-from-top-1 duration-150">
+            <button
+              onClick={onLogout}
+              className="sidebar-nav-btn"
+            >
+              <LogOut className="w-4 h-4" strokeWidth={1.5} />
+              <span className="text-sm" style={{ fontWeight: 400 }}>Logout</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
