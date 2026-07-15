@@ -26,6 +26,7 @@ import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { WhatsAppNumbersPage } from '@/app/components/pages/WhatsAppNumbersPage';
+import { ClientWhatsappPage } from '@/app/components/pages/ClientWhatsappPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -43,6 +44,7 @@ type OpsPageId =
   | 'activity-log'
 
   | 'whatsapp-numbers'
+  | 'client-whatsapp'
   | 'settings';
 
 const pageToPath: Record<OpsPageId, string> = {
@@ -59,6 +61,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
   'whatsapp-numbers': 'whatsapp-numbers',
+  'client-whatsapp': 'client-whatsapp',
   settings: 'settings',
 };
 
@@ -174,8 +177,10 @@ function OpsPageRenderer({
       return <ActivityLogPage />;
     case 'operations-update':
       return <OperationsUpdatePage />;
-case 'whatsapp-numbers':
+    case 'whatsapp-numbers':
       return <WhatsAppNumbersPage />;
+    case 'client-whatsapp':
+      return <ClientWhatsappPage />;
     case 'settings':
       return <div className="max-w-6xl mx-auto">
         <div className="mb-8">

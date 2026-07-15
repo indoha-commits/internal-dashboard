@@ -559,3 +559,26 @@ export async function deleteOpsNumber(id: string): Promise<{ ok: true }> {
     method: 'DELETE',
   });
 }
+
+export type SetClientWhatsappPhoneInput = {
+  whatsapp_phone: string;
+};
+
+export type SetClientWhatsappPhoneResponse = {
+  ok: boolean;
+  client_id: string;
+  whatsapp_phone: string;
+};
+
+export async function setClientWhatsappPhone(
+  clientId: string,
+  input: SetClientWhatsappPhoneInput,
+): Promise<SetClientWhatsappPhoneResponse> {
+  return await fetchJson<SetClientWhatsappPhoneResponse>(
+    `/ops/clients/${encodeURIComponent(clientId)}/whatsapp-phone`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    },
+  );
+}

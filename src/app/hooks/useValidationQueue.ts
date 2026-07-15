@@ -74,7 +74,7 @@ export function useValidationQueue() {
     const supabase = getSupabase();
     const approvalsSub = supabase
       .channel('validation_queue_approvals')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_client_approvals' }, () => { refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mt_cargo_approvals' }, () => { refresh(); })
       .subscribe();
     const documentsSub = supabase
       .channel('validation_queue_documents')
@@ -82,7 +82,7 @@ export function useValidationQueue() {
       .subscribe();
     const cargoSub = supabase
       .channel('validation_queue_cargo')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cargo' }, () => { refresh(); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mt_cargo' }, () => { refresh(); })
       .subscribe();
 
     return () => {

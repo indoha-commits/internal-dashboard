@@ -36,8 +36,8 @@ const navGroups: NavGroup[] = [
   {
     label: 'Tools',
     items: [
-
-      { id: 'whatsapp-numbers', label: 'WhatsApp Numbers', icon: Phone },
+      { id: 'whatsapp-numbers', label: 'Ops WhatsApp', icon: Phone },
+      { id: 'client-whatsapp', label: 'Client WhatsApp', icon: Phone },
       { id: 'activity-log', label: 'Activity Log', icon: Activity },
     ],
   },
