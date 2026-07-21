@@ -15,7 +15,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onTogg
   return (
     <>
       <aside
-        className={`hidden md:flex flex-col h-screen overflow-y-auto sidebar-scroll flex-shrink-0 transition-all duration-300 ${
+        className={`hidden lg:flex flex-col h-screen overflow-y-auto sidebar-scroll flex-shrink-0 transition-all duration-300 ${
           collapsed ? 'w-0 overflow-hidden' : 'w-64'
         }`}
         style={{
@@ -45,7 +45,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onTogg
         <button
           type="button"
           onClick={onToggle}
-          className="hidden md:flex absolute left-3 top-4 z-30 items-center justify-center w-8 h-8 rounded border transition-colors"
+          className="hidden lg:flex absolute left-3 top-4 z-30 items-center justify-center w-8 h-8 rounded border transition-colors"
           style={{
             backgroundColor: 'var(--sidebar)',
             borderColor: 'var(--sidebar-border)',

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/app/components/Sidebar';
 import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
@@ -7,10 +7,8 @@ import { getSupabase } from '@/app/auth/supabase';
 import { sessionStore } from '@/app/auth/sessionStore';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
 } from '@/app/components/ui/sheet';
 import { useThemeToggle } from '@/app/hooks/useThemeToggle';
 import { DashboardPage } from '@/app/components/pages/DashboardPage';
@@ -192,6 +190,15 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileNavOpen]);
+
   const handleLogout = async () => {
     try {
       // Release internal session lock (best-effort)
@@ -227,30 +234,40 @@ export default function App() {
 
       {/* Mobile top bar */}
       <div
-        className="md:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center gap-3"
+        className="lg:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center gap-3"
         style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}
       >
+        <div className="flex items-center">
+          <img src="/indataflow-logo.png" alt="InDataFlow" className="h-8 w-auto" />
+        </div>
+        <div className="flex-1 min-w-0" />
         <button
           type="button"
           onClick={() => setMobileNavOpen(true)}
-          className="inline-flex items-center justify-center w-10 h-10 rounded border"
-          style={{ borderColor: 'var(--border)' }}
+          className="inline-flex items-center justify-center w-10 h-10 rounded hover:opacity-70 transition-opacity"
+          style={{ color: 'var(--text-primary)' }}
           aria-label="Open navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="min-w-0 flex-1 flex items-center">
-          <img src="/indataflow-logo.png" alt="InDataFlow" className="h-8 w-auto brightness-0 invert" />
-        </div>
       </div>
 
       {/* Mobile nav drawer */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="p-0 overflow-y-auto" style={{ backgroundColor: 'var(--sidebar)' }}>
-          <SheetHeader className="sr-only">
-            <SheetTitle>Navigation menu</SheetTitle>
-            <SheetDescription>Operations dashboard pages</SheetDescription>
-          </SheetHeader>
+        <SheetContent side="left" className="flex flex-col p-0" style={{ backgroundColor: 'var(--sidebar)' }}>
+          <div
+            className="flex items-center justify-between px-4 py-4 border-b shrink-0"
+            style={{ backgroundColor: 'var(--sidebar)', borderColor: 'var(--sidebar-border)' }}
+          >
+            <img src="/indataflow-logo.png" alt="InDataFlow" className="h-8 w-auto brightness-0 invert" />
+            <SheetClose
+              className="inline-flex items-center justify-center w-8 h-8 rounded hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--sidebar-foreground)' }}
+              aria-label="Close navigation"
+            >
+              <X className="w-5 h-5" />
+            </SheetClose>
+          </div>
           <OpsSidebarContent
             currentPage={currentPageMemo}
             onPageChange={(page) => setCurrentPage(page as OpsPageId)}

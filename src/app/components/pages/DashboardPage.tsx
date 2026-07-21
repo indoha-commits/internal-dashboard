@@ -133,7 +133,7 @@ export function DashboardPage() {
       </div>
 
       {/* Desktop KPI Grid */}
-      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-3 gap-4 lg:gap-6 mb-8 mb-12">
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-12">
         <KPITile label="Documents Awaiting Verification" value={kpis?.pending_documents ?? 0} icon={FileText} iconBgClass="kpi-icon-amber" route="/pending-documents" />
         <KPITile label="Pending Validation" value={kpis?.pending_validation ?? 0} icon={Inbox} iconBgClass="kpi-icon-indigo" route="/validation-requests" />
         <KPITile label="Awaiting Upload" value={kpis?.awaiting_upload ?? 0} icon={Upload} iconBgClass="kpi-icon-emerald" route="/validation" />
@@ -291,7 +291,7 @@ export function DashboardPage() {
                         {pendingDays}d pending
                       </div>
                     </div>
-                    <div className="text-xs text-linear_dim my-1">{doc.client_name ?? 'Unknown Client'}</div>
+                    <div className="text-xs my-1" style={{ color: 'var(--text-secondary)' }}>{doc.client_name ?? 'Unknown Client'}</div>
                     <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{formatDocType(doc.document_type)}</div>
                     <div className="flex items-center justify-between">
                       <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
