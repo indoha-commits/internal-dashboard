@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, Mail, Sun, Moon, ChevronUp } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Settings, Sun, Moon, ChevronUp } from 'lucide-react';
 import { sessionStore } from '@/app/auth/sessionStore';
 
 interface OpsSidebarContentProps {
@@ -38,10 +38,6 @@ const navGroups: NavGroup[] = [
   {
     label: 'Tools',
     items: [
-      { id: 'whatsapp-numbers', label: 'Ops WhatsApp', icon: Phone },
-      { id: 'client-whatsapp', label: 'Client WhatsApp', icon: Phone },
-      { id: 'email-intake-setup', label: 'Email Intake Setup', icon: Mail },
-      { id: 'activity-log', label: 'Activity Log', icon: Activity },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },

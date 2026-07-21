@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText, FileCheck, FileSpreadsheet, Scroll, Receipt, ClipboardList, Ship, Truck } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
   getOpsPendingDocuments,
@@ -20,6 +20,19 @@ type Grouped = Array<{
     documents: PendingDoc[];
   }>;
 }>;
+
+function docTypeIcon(type: string) {
+  const t = type.toUpperCase();
+  if (t.includes('DRAFT') || t.includes('DECLARATION')) return FileText;
+  if (t.includes('WH7') || t.includes('WAREHOUSE')) return Scroll;
+  if (t.includes('INVOICE')) return Receipt;
+  if (t.includes('PACKING')) return ClipboardList;
+  if (t.includes('BILL') || t.includes('BOL') || t.includes('LADING')) return Ship;
+  if (t.includes('EXIT') || t.includes('NOTE')) return FileCheck;
+  if (t.includes('IM8') || t.includes('IMPORT')) return Truck;
+  if (t.includes('ASSESSMENT')) return FileSpreadsheet;
+  return FileText;
+}
 
 function formatDocType(value: string): string {
   return value
@@ -256,12 +269,18 @@ export function PendingDocumentsPage() {
                                     const opening = Boolean(busy[`open:${doc.id}`]);
                                     return (
                                       <div key={doc.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                                        <div>
+                                        <div className="flex items-center gap-2">
+                                          {(() => {
+                                            const Icon = docTypeIcon(doc.document_type);
+                                            return <Icon className="w-4 h-4 shrink-0" strokeWidth={1.5} style={{ color: 'var(--text-secondary)' }} />;
+                                          })()}
+                                          <div>
                                           <div className="text-sm font-medium">
                                             {formatDocType(doc.document_type)}
                                           </div>
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
+                                          </div>
                                           </div>
                                         </div>
 

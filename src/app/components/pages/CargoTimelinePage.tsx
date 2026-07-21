@@ -297,15 +297,19 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
         <div className="space-y-6">
           <div className="bg-card rounded-lg border border-default p-6">
             <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Cargo</div>
-                <div className="font-mono text-lg" style={{ color: 'var(--primary)' }}>
-                  {data.cargo?.id}
+              <div className="space-y-2">
+                <div>
+                  <div className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>Bill of Lading</div>
+                  <div className="font-mono text-lg" style={{ color: 'var(--primary)' }}>
+                    {data.cargo?.id}
+                  </div>
                 </div>
-                <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Client: {data.cargo?.client_name}</div>
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Category: {formatLabel(data.cargo?.category ?? '')}</div>
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <span>Client: <span className="font-medium">{data.cargo?.client_name}</span></span>
+                  <span>Category: <span className="font-medium">{formatLabel(data.cargo?.category ?? '')}</span></span>
+                </div>
               </div>
-              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Created {data.cargo?.created_at ? new Date(data.cargo.created_at).toLocaleString() : ''}</div>
+              <div className="text-xs shrink-0" style={{ color: 'var(--text-secondary)' }}>Created {data.cargo?.created_at ? new Date(data.cargo.created_at).toLocaleString() : ''}</div>
             </div>
           </div>
 

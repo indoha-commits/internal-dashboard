@@ -23,11 +23,8 @@ import { CargoRegistryPage } from '@/app/components/pages/CargoRegistryPage';
 import { CreateClientPage } from '@/app/components/pages/CreateClientPage';
 import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
 import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
-import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
-import { WhatsAppNumbersPage } from '@/app/components/pages/WhatsAppNumbersPage';
-import { ClientWhatsappPage } from '@/app/components/pages/ClientWhatsappPage';
-import { EmailIntakeSetupPage } from '@/app/components/pages/EmailIntakeSetupPage';
+import { SettingsPage } from '@/app/components/pages/SettingsPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -42,11 +39,6 @@ type OpsPageId =
   | 'create-client'
   | 'delete-client'
   | 'add-client-user'
-  | 'activity-log'
-
-  | 'whatsapp-numbers'
-  | 'client-whatsapp'
-  | 'email-intake-setup'
   | 'settings';
 
 const pageToPath: Record<OpsPageId, string> = {
@@ -61,10 +53,6 @@ const pageToPath: Record<OpsPageId, string> = {
   'create-client': 'create-client',
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
-  'activity-log': 'activity-log',
-  'whatsapp-numbers': 'whatsapp-numbers',
-  'client-whatsapp': 'client-whatsapp',
-  'email-intake-setup': 'email-intake-setup',
   settings: 'settings',
 };
 
@@ -80,9 +68,6 @@ const pathToPage: Record<string, OpsPageId> = {
   'create-client': 'create-client',
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
-  'activity-log': 'activity-log',
-  'whatsapp-numbers': 'whatsapp-numbers',
-  'email-intake-setup': 'email-intake-setup',
   settings: 'settings',
 };
 
@@ -175,24 +160,10 @@ function OpsPageRenderer({
           onDone={() => setCurrentPage('cargo-registry')}
         />
       );
-    case 'activity-log':
-      return <ActivityLogPage />;
     case 'operations-update':
       return <OperationsUpdatePage />;
-    case 'whatsapp-numbers':
-      return <WhatsAppNumbersPage />;
-    case 'client-whatsapp':
-      return <ClientWhatsappPage />;
-    case 'email-intake-setup':
-      return <EmailIntakeSetupPage />;
     case 'settings':
-      return <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="page-title">Settings</h1>
-          <p className="page-desc mt-2">Account and application preferences</p>
-        </div>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Settings page coming soon.</p>
-      </div>;
+      return <SettingsPage />;
     default:
       return <DashboardPage />;
   }
@@ -291,7 +262,7 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className="flex-1 min-w-0 px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10">
+      <main className="flex-1 min-w-0 px-4 py-6 sm:px-6 sm:py-8 md:px-12 md:py-12">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
