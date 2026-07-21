@@ -2,14 +2,11 @@ import { useEffect, useState } from 'react';
 import { useToast } from '@/app/hooks/useToast';
 import { sessionStore } from './sessionStore';
 
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
-
 export function AuthGateInternal({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(USE_MOCK_DATA);
+  const [ready, setReady] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (USE_MOCK_DATA) return;
 
     let unsub: (() => void) | undefined;
     let mounted = true;

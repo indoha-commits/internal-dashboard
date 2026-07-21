@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, ChevronUp } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, Activity, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Phone, Settings, Mail, Sun, Moon, ChevronUp } from 'lucide-react';
 import { sessionStore } from '@/app/auth/sessionStore';
 
 interface OpsSidebarContentProps {
@@ -7,6 +7,8 @@ interface OpsSidebarContentProps {
   onPageChange: (page: string) => void;
   onLogout: () => void;
   onNavigate?: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 type NavGroup = {
@@ -38,12 +40,8 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'whatsapp-numbers', label: 'Ops WhatsApp', icon: Phone },
       { id: 'client-whatsapp', label: 'Client WhatsApp', icon: Phone },
+      { id: 'email-intake-setup', label: 'Email Intake Setup', icon: Mail },
       { id: 'activity-log', label: 'Activity Log', icon: Activity },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -78,7 +76,7 @@ function NavButton({
   );
 }
 
-export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate }: OpsSidebarContentProps) {
+export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavigate, theme, toggleTheme }: OpsSidebarContentProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
@@ -136,7 +134,14 @@ export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavig
         </button>
 
         {showUserMenu && (
-          <div className="px-3 pb-4 animate-in slide-in-from-top-1 duration-150">
+          <div className="px-3 pb-4 animate-in slide-in-from-top-1 duration-150 space-y-1">
+            <button
+              onClick={toggleTheme}
+              className="sidebar-nav-btn"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" strokeWidth={1.5} /> : <Moon className="w-4 h-4" strokeWidth={1.5} />}
+              <span className="text-sm" style={{ fontWeight: 400 }}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+            </button>
             <button
               onClick={onLogout}
               className="sidebar-nav-btn"

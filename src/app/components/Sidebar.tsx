@@ -7,9 +7,11 @@ interface SidebarProps {
   onLogout: () => void;
   collapsed: boolean;
   onToggle: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
-export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onToggle, theme, toggleTheme }: SidebarProps) {
   return (
     <>
       <aside
@@ -35,7 +37,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onTogg
             <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
-        <OpsSidebarContent currentPage={currentPage} onPageChange={onPageChange} onLogout={onLogout} />
+        <OpsSidebarContent currentPage={currentPage} onPageChange={onPageChange} onLogout={onLogout} theme={theme} toggleTheme={toggleTheme} />
       </aside>
 
       {/* Floating toggle button when collapsed */}

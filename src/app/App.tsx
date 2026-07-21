@@ -27,6 +27,7 @@ import { ActivityLogPage } from '@/app/components/pages/ActivityLogPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { WhatsAppNumbersPage } from '@/app/components/pages/WhatsAppNumbersPage';
 import { ClientWhatsappPage } from '@/app/components/pages/ClientWhatsappPage';
+import { EmailIntakeSetupPage } from '@/app/components/pages/EmailIntakeSetupPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -45,6 +46,7 @@ type OpsPageId =
 
   | 'whatsapp-numbers'
   | 'client-whatsapp'
+  | 'email-intake-setup'
   | 'settings';
 
 const pageToPath: Record<OpsPageId, string> = {
@@ -62,6 +64,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'activity-log': 'activity-log',
   'whatsapp-numbers': 'whatsapp-numbers',
   'client-whatsapp': 'client-whatsapp',
+  'email-intake-setup': 'email-intake-setup',
   settings: 'settings',
 };
 
@@ -79,15 +82,14 @@ const pathToPage: Record<string, OpsPageId> = {
   'add-client-user': 'add-client-user',
   'activity-log': 'activity-log',
   'whatsapp-numbers': 'whatsapp-numbers',
+  'email-intake-setup': 'email-intake-setup',
   settings: 'settings',
 };
 
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
-
 function requireEnv(name: string): string {
   const v = (import.meta.env as any)[name] as string | undefined;
-  if (!v && !USE_MOCK_DATA) throw new Error(`Missing required env var: ${name}`);
-  return v ?? '';
+  if (!v) throw new Error(`Missing required env var: ${name}`);
+  return v;
 }
 
 const authPortalUrl = requireEnv('VITE_AUTH_PORTAL_URL');
@@ -181,6 +183,8 @@ function OpsPageRenderer({
       return <WhatsAppNumbersPage />;
     case 'client-whatsapp':
       return <ClientWhatsappPage />;
+    case 'email-intake-setup':
+      return <EmailIntakeSetupPage />;
     case 'settings':
       return <div className="max-w-6xl mx-auto">
         <div className="mb-8">
@@ -246,6 +250,8 @@ export default function App() {
         onLogout={handleLogout}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       {/* Mobile top bar */}
@@ -265,13 +271,6 @@ export default function App() {
         <div className="min-w-0 flex-1 flex items-center">
           <img src="/indataflow-logo.png" alt="InDataFlow" className="h-8 w-auto brightness-0 invert" />
         </div>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="topbar-btn"
-        >
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        </button>
       </div>
 
       {/* Mobile nav drawer */}
@@ -286,20 +285,13 @@ export default function App() {
             onPageChange={(page) => setCurrentPage(page as OpsPageId)}
             onLogout={handleLogout}
             onNavigate={() => setMobileNavOpen(false)}
+            theme={theme}
+            toggleTheme={toggleTheme}
           />
         </SheetContent>
       </Sheet>
 
       <main className="flex-1 min-w-0 px-4 py-4 sm:px-6 sm:py-6 md:px-12 md:py-10">
-        <div className="hidden md:flex justify-end items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="topbar-btn"
-          >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-        </div>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
