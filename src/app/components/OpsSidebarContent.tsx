@@ -77,31 +77,33 @@ export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavig
 
   return (
     <div className="flex flex-col min-h-full whitespace-nowrap">
-      {/* Navigation */}
+      {/* Navigation — flex column so groups stretch to fill space */}
       <nav
-        className="flex-1 px-3 py-4 md:py-6"
+        className="flex-1 flex flex-col px-3 py-4 md:py-6"
         aria-label="Main navigation"
       >
-        {navGroups.map((group) => (
-          <div key={group.label} className="mb-5">
-            <div
-              className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider sidebar-label"
-            >
-              {group.label}
+        <div className="flex-1">
+          {navGroups.map((group) => (
+            <div key={group.label} className="mb-5">
+              <div
+                className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider sidebar-label"
+              >
+                {group.label}
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavButton
+                    key={item.id}
+                    item={item}
+                    currentPage={currentPage}
+                    onPageChange={onPageChange}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavButton
-                  key={item.id}
-                  item={item}
-                  currentPage={currentPage}
-                  onPageChange={onPageChange}
-                  onNavigate={onNavigate}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </nav>
 
       {/* Bottom actions — sticky at bottom */}
