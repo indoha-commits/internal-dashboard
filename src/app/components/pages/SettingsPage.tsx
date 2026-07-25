@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { EmailIntakeSetupPage } from './EmailIntakeSetupPage';
-import { WhatsAppNumbersPage } from './WhatsAppNumbersPage';
+import { PhoneNumbersAccessPage } from './PhoneNumbersAccessPage';
 import { ActivityLogPage } from './ActivityLogPage';
 
-type SettingsTab = 'general' | 'email-intake' | 'whatsapp' | 'activity-log';
+type SettingsTab = 'general' | 'email-intake' | 'phone-numbers' | 'activity-log';
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'email-intake', label: 'Email Intake Setup' },
-  { id: 'whatsapp', label: 'WhatsApp Numbers' },
+  { id: 'phone-numbers', label: 'Phone Numbers & Access' },
   { id: 'activity-log', label: 'Activity Log' },
 ];
 
@@ -43,7 +43,7 @@ export function SettingsPage() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Settings page coming soon.</p>
         )}
         {activeTab === 'email-intake' && <EmailIntakeSetupPage />}
-        {activeTab === 'whatsapp' && <WhatsAppNumbersPage />}
+        {activeTab === 'phone-numbers' && <PhoneNumbersAccessPage />}
         {activeTab === 'activity-log' && <ActivityLogPage />}
       </div>
     </div>

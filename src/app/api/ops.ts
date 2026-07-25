@@ -582,3 +582,42 @@ export async function setClientWhatsappPhone(
     },
   );
 }
+
+// ── Client WhatsApp number management (tenant-level) ──
+
+export type ClientNumberEntry = {
+  id: string;
+  name: string;
+  whatsapp_phone: string | null;
+  created_at: string;
+};
+
+export type ListClientNumbersResponse = {
+  numbers: ClientNumberEntry[];
+};
+
+export async function listClientNumbers(): Promise<ListClientNumbersResponse> {
+  return await fetchJson<ListClientNumbersResponse>('/ops/tenant/client-numbers');
+}
+
+export type AddClientNumberInput = {
+  name: string;
+  phone_number: string;
+};
+
+export type AddClientNumberResponse = {
+  number: ClientNumberEntry | null;
+};
+
+export async function addClientNumber(input: AddClientNumberInput): Promise<AddClientNumberResponse> {
+  return await fetchJson<AddClientNumberResponse>('/ops/tenant/client-numbers', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteClientNumber(id: string): Promise<{ ok: true }> {
+  return await fetchJson<{ ok: true }>(`/ops/tenant/client-numbers/${id}`, {
+    method: 'DELETE',
+  });
+}
