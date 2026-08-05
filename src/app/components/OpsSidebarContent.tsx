@@ -76,7 +76,7 @@ export function OpsSidebarContent({ currentPage, onPageChange, onLogout, onNavig
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-full whitespace-nowrap">
+    <div className="flex flex-col flex-1 h-full whitespace-nowrap">
       {/* Navigation — flex column so groups stretch to fill space */}
       <nav
         className="flex-1 flex flex-col px-3 py-4 md:py-6"
