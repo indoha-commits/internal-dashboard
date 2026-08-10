@@ -220,7 +220,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen overflow-x-hidden">
       {/* Desktop sidebar */}
       <Sidebar
         currentPage={currentPageMemo}
@@ -234,7 +234,7 @@ export default function App() {
 
       {/* Mobile top bar */}
       <div
-        className="lg:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center gap-3"
+        className="lg:hidden sticky top-0 z-40 w-full shrink-0 border-b px-4 py-3 flex items-center gap-3"
         style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}
       >
         <div className="flex items-center">
