@@ -47,6 +47,7 @@ export type OpsDashboardResponse = {
     id: string;
     cargo_id: string;
     document_type: string;
+    document_type_label?: string;
     status: string;
     drive_url: string | null;
     uploaded_at: string | null;
@@ -65,6 +66,7 @@ export type OpsPendingDocumentsResponse = {
     cargo_id: string;
     bill_of_lading: string | null;
     document_type: string;
+    document_type_label?: string;
     status: string;
     drive_url: string | null;
     uploaded_at: string | null;
@@ -251,6 +253,7 @@ export async function getOpsValidationQueue(): Promise<OpsValidationQueueRespons
 export type OpsVerifyDocumentRequest = {
   document_id: string;
   action: 'approve' | 'reject';
+  document_type?: string;
   rejection_reason?: string;
 };
 

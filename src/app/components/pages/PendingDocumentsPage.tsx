@@ -34,6 +34,8 @@ function docTypeIcon(type: string) {
   return FileText;
 }
 
+const RECLASS_DOC_TYPES = ['BILL_OF_LADING','COMMERCIAL_INVOICE','INVOICE','PACKING_LIST','CUSTOMS_DECLARATION','DELIVERY_ORDER','CERTIFICATE_OF_ORIGIN','ARRIVAL_NOTICE'];
+
 function formatDocType(value: string): string {
   return value
     .replace(/_/g, ' ')
@@ -50,6 +52,7 @@ export function PendingDocumentsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [verifyState, setVerifyState] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
+  const [documentTypeSelections, setDocumentTypeSelections] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const refresh = async () => {
@@ -132,11 +135,11 @@ export function PendingDocumentsPage() {
 
   const [rejectDialog, setRejectDialog] = useState<{ doc: PendingDoc; reason: string } | null>(null);
 
-  const handleVerify = async (doc: PendingDoc, action: 'approve' | 'reject', rejectionReason?: string) => {
+  const handleVerify = async (doc: PendingDoc, action: 'approve' | 'reject', rejectionReason?: string, documentType?: string) => {
     setBusy((m) => ({ ...m, [doc.id]: true }));
     setVerifyState((s) => ({ ...s, [doc.id]: 'loading' }));
     try {
-      await verifyDocument({ document_id: doc.id, action, rejection_reason: rejectionReason });
+      await verifyDocument({ document_id: doc.id, action, rejection_reason: rejectionReason, document_type: documentType });
       await refresh();
       setVerifyState((s) => ({ ...s, [doc.id]: 'done' }));
       window.setTimeout(() => {
@@ -276,7 +279,7 @@ export function PendingDocumentsPage() {
                                           })()}
                                           <div>
                                           <div className="text-sm font-medium">
-                                            {formatDocType(doc.document_type)}
+                                            {doc.document_type_label ?? (doc.document_type === 'OTHER' ? 'Unknown (manual verification)' : formatDocType(doc.document_type))}
                                           </div>
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
@@ -284,7 +287,7 @@ export function PendingDocumentsPage() {
                                           </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">
+                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">{doc.document_type === "OTHER" && (<select aria-label="Choose document type before verification" value={documentTypeSelections[doc.id] ?? ""} disabled={verifying} onChange={(e) => setDocumentTypeSelections((s) => ({ ...s, [doc.id]: e.target.value }))} className="rounded border border-default bg-background px-2 py-2 text-sm"><option value="">Select type…</option>{RECLASS_DOC_TYPES.map((t) => <option key={t} value={t}>{formatDocType(t)}</option>)}</select>)}
                                           <Button
                                             disabled={opening}
                                             onClick={() => handleOpenSignedUrl(doc)}
@@ -294,8 +297,8 @@ export function PendingDocumentsPage() {
                                             Open
                                           </Button>
                                           <Button
-                                            disabled={verifying}
-                                            onClick={() => handleVerify(doc, 'approve')}
+                                            disabled={verifying || (doc.document_type === 'OTHER' && !documentTypeSelections[doc.id])}
+                                            onClick={() => handleVerify(doc, 'approve', undefined, doc.document_type === 'OTHER' ? documentTypeSelections[doc.id] : undefined)}
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
                                               <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />
