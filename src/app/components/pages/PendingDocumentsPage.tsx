@@ -36,6 +36,11 @@ function docTypeIcon(type: string) {
 
 const RECLASS_DOC_TYPES = ['BILL_OF_LADING','COMMERCIAL_INVOICE','INVOICE','PACKING_LIST','CUSTOMS_DECLARATION','DELIVERY_ORDER','CERTIFICATE_OF_ORIGIN','ARRIVAL_NOTICE'];
 
+function isUnknownDocType(value: string | null | undefined): boolean {
+  const t = String(value ?? '').toUpperCase();
+  return t === 'OTHER' || t === 'UNKNOWN';
+}
+
 function formatDocType(value: string): string {
   return value
     .replace(/_/g, ' ')
@@ -96,7 +101,7 @@ export function PendingDocumentsPage() {
     const byClient = new Map<string, Map<string, PendingDoc[]>>();
     for (const d of filtered) {
       const clientName = d.client_name ?? 'Unknown Client';
-      const groupId = d.bill_of_lading ?? d.cargo_id ?? '';
+      const groupId = d.bill_of_lading ?? d.cargo_id ?? (isUnknownDocType(d.document_type) ? 'Pending document' : 'Unassigned');
       const cargos = byClient.get(clientName) ?? new Map<string, PendingDoc[]>();
       const list = cargos.get(groupId) ?? [];
       list.push(d);
@@ -279,7 +284,7 @@ export function PendingDocumentsPage() {
                                           })()}
                                           <div>
                                           <div className="text-sm font-medium">
-                                            {doc.document_type_label ?? (doc.document_type === 'OTHER' ? 'Unknown (manual verification)' : formatDocType(doc.document_type))}
+                                            {doc.document_type_label ?? (isUnknownDocType(doc.document_type) ? 'Unknown type — select before approval' : formatDocType(doc.document_type))}
                                           </div>
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
@@ -287,7 +292,7 @@ export function PendingDocumentsPage() {
                                           </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">{doc.document_type === "OTHER" && (<select aria-label="Choose document type before verification" value={documentTypeSelections[doc.id] ?? ""} disabled={verifying} onChange={(e) => setDocumentTypeSelections((s) => ({ ...s, [doc.id]: e.target.value }))} className="rounded border border-default bg-background px-2 py-2 text-sm"><option value="">Select type…</option>{RECLASS_DOC_TYPES.map((t) => <option key={t} value={t}>{formatDocType(t)}</option>)}</select>)}
+                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">{isUnknownDocType(doc.document_type) && (<select aria-label="Choose document type before verification" value={documentTypeSelections[doc.id] ?? ""} disabled={verifying} onChange={(e) => setDocumentTypeSelections((s) => ({ ...s, [doc.id]: e.target.value }))} className="rounded border border-default bg-background px-2 py-2 text-sm"><option value="">Select type…</option>{RECLASS_DOC_TYPES.map((t) => <option key={t} value={t}>{formatDocType(t)}</option>)}</select>)}
                                           <Button
                                             disabled={opening}
                                             onClick={() => handleOpenSignedUrl(doc)}
@@ -297,8 +302,8 @@ export function PendingDocumentsPage() {
                                             Open
                                           </Button>
                                           <Button
-                                            disabled={verifying || (doc.document_type === 'OTHER' && !documentTypeSelections[doc.id])}
-                                            onClick={() => handleVerify(doc, 'approve', undefined, doc.document_type === 'OTHER' ? documentTypeSelections[doc.id] : undefined)}
+                                            disabled={verifying || (isUnknownDocType(doc.document_type) && !documentTypeSelections[doc.id])}
+                                            onClick={() => handleVerify(doc, 'approve', undefined, isUnknownDocType(doc.document_type) ? documentTypeSelections[doc.id] : undefined)}
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
                                               <Loader2 className="w-4 h-4 animate-spin" aria-label="Loading" />

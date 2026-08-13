@@ -38,6 +38,12 @@ interface RequestRow {
   rejection_reason: string | null;
   from_number?: string | null;
   linked?: boolean;
+  detected_container_candidates?: Array<{
+    normalized?: string;
+    raw_value?: string;
+    context?: string | null;
+    status?: string;
+  }>;
 }
 
 async function getOpsRequests(): Promise<{ requests: RequestRow[] }> {
@@ -51,6 +57,7 @@ type ApprovePayload = {
   container_count?: number;
   client_id?: string;
   phone_number?: string;
+  verified_container_ids?: string[];
 };
 
 async function approveRequest(payload: ApprovePayload): Promise<{ cargo?: Record<string, unknown> }> {
@@ -82,6 +89,7 @@ export function RequestValidationPage() {
     clearancePathway: 'PORT_CLEARANCE' | 'T1_TRANSIT';
     expectedArrival: string;
     containerCount: string;
+    fallbackCandidates: string[];
     selectedClientId: string;
     phoneNumber: string;
   } | null>(null);
@@ -143,6 +151,9 @@ export function RequestValidationPage() {
       }
       const cc = Number(approveDialog.containerCount);
       if (Number.isFinite(cc) && cc >= 1) payload.container_count = cc;
+      if (approveDialog.fallbackCandidates.length) {
+        payload.verified_container_ids = approveDialog.fallbackCandidates;
+      }
       if (!approveDialog.request.linked) {
         const phoneDigits = approveDialog.phoneNumber.replace(/\D/g, '');
         if (approveDialog.selectedClientId && approveDialog.selectedClientId !== '__new__') {
@@ -267,6 +278,7 @@ export function RequestValidationPage() {
                           clearancePathway: 'PORT_CLEARANCE',
                           expectedArrival: '',
                           containerCount: '1',
+                          fallbackCandidates: [],
                           selectedClientId: '',
                           phoneNumber: '',
                         })
@@ -372,6 +384,40 @@ export function RequestValidationPage() {
               className="bg-background"
             />
           </div>
+          {approveDialog?.request.detected_container_candidates?.some(
+            (candidate) => candidate.context === 'fallback_column',
+          ) ? (
+            <div className="space-y-2">
+              <Label>Fallback container OCR</Label>
+              <div className="space-y-1 rounded border border-default p-3">
+                {approveDialog.request.detected_container_candidates
+                  .filter((candidate) => candidate.context === 'fallback_column')
+                  .map((candidate) => {
+                    const id = String(candidate.normalized ?? candidate.raw_value ?? '')
+                      .trim()
+                      .toUpperCase();
+                    const checked = approveDialog.fallbackCandidates.includes(id);
+                    return (
+                      <label key={id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setApproveDialog((previous: any) => previous ? {
+                              ...previous,
+                              fallbackCandidates: checked
+                                ? previous.fallbackCandidates.filter((value: string) => value !== id)
+                                : [...previous.fallbackCandidates, id],
+                            } : previous)
+                          }
+                        />
+                        <span>{id}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label>Container count if B/L has no ISO numbers (optional)</Label>
             <Input
