@@ -73,6 +73,10 @@ export type OpsPendingDocumentsResponse = {
     client_id: string | null;
     client_name: string | null;
     rejection_reason?: string | null;
+    action_blocked?: boolean;
+    bl_validation_status?: 'pending' | 'rejected' | 'approved' | 'unresolved';
+    bl_validation_request_id?: string | null;
+    action_block_reason?: string | null;
   }>;
 };
 

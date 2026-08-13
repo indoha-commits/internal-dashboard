@@ -275,6 +275,7 @@ export function PendingDocumentsPage() {
                                   {cargo.documents.map((doc) => {
                                     const verifying = Boolean(busy[doc.id]);
                                     const opening = Boolean(busy[`open:${doc.id}`]);
+                                    const actionBlocked = Boolean(doc.action_blocked);
                                     return (
                                       <div key={doc.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                         <div className="flex items-center gap-2">
@@ -289,10 +290,15 @@ export function PendingDocumentsPage() {
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
+                                          {actionBlocked ? (
+                                            <div className="text-xs mt-1" style={{ color: 'var(--destructive)' }}>
+                                              {doc.action_block_reason ?? 'B/L validation is required before this document can be actioned.'}
+                                            </div>
+                                          ) : null}
                                           </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">{isUnknownDocType(doc.document_type) && (<select aria-label="Choose document type before verification" value={documentTypeSelections[doc.id] ?? ""} disabled={verifying} onChange={(e) => setDocumentTypeSelections((s) => ({ ...s, [doc.id]: e.target.value }))} className="rounded border border-default bg-background px-2 py-2 text-sm"><option value="">Select type…</option>{RECLASS_DOC_TYPES.map((t) => <option key={t} value={t}>{formatDocType(t)}</option>)}</select>)}
+                                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-2">{isUnknownDocType(doc.document_type) && (<select aria-label="Choose document type before verification" value={documentTypeSelections[doc.id] ?? ""} disabled={verifying || actionBlocked} onChange={(e) => setDocumentTypeSelections((s) => ({ ...s, [doc.id]: e.target.value }))} className="rounded border border-default bg-background px-2 py-2 text-sm"><option value="">Select type…</option>{RECLASS_DOC_TYPES.map((t) => <option key={t} value={t}>{formatDocType(t)}</option>)}</select>)}
                                           <Button
                                             disabled={opening}
                                             onClick={() => handleOpenSignedUrl(doc)}
@@ -302,7 +308,7 @@ export function PendingDocumentsPage() {
                                             Open
                                           </Button>
                                           <Button
-                                            disabled={verifying || (isUnknownDocType(doc.document_type) && !documentTypeSelections[doc.id])}
+                                            disabled={actionBlocked || verifying || (isUnknownDocType(doc.document_type) && !documentTypeSelections[doc.id])}
                                             onClick={() => handleVerify(doc, 'approve', undefined, isUnknownDocType(doc.document_type) ? documentTypeSelections[doc.id] : undefined)}
                                           >
                                             {verifyState[doc.id] === 'loading' ? (
@@ -317,7 +323,7 @@ export function PendingDocumentsPage() {
                                                 : 'Approve'}
                                           </Button>
                                           <Button
-                                            disabled={verifying}
+                                            disabled={actionBlocked || verifying}
                                             onClick={() => setRejectDialog({ doc, reason: '' })}
                                             variant="outline"
                                             className="text-destructive border-destructive"
