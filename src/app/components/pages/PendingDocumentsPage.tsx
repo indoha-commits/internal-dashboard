@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText, FileCheck, FileSpreadsheet, Scroll, Receipt, ClipboardList, Ship, Truck } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText, FileCheck, FileSpreadsheet, Scroll, Receipt, ClipboardList, Ship, Truck, LockKeyhole } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
   getOpsPendingDocuments,
@@ -94,14 +94,17 @@ export function PendingDocumentsPage() {
           const cargo = d.cargo_id?.toLowerCase() ?? '';
           const client = (d.client_name ?? '').toLowerCase();
           const type = d.document_type?.toLowerCase() ?? '';
-          return cargo.includes(q) || client.includes(q) || type.includes(q);
+          const billOfLading = d.bill_of_lading?.toLowerCase() ?? '';
+          return cargo.includes(q) || client.includes(q) || type.includes(q) || billOfLading.includes(q);
         })
       : docs;
 
     const byClient = new Map<string, Map<string, PendingDoc[]>>();
     for (const d of filtered) {
       const clientName = d.client_name ?? 'Unknown Client';
-      const groupId = d.bill_of_lading ?? d.cargo_id ?? (isUnknownDocType(d.document_type) ? 'Pending document' : 'Unassigned');
+      const groupId = d.bill_of_lading
+        ? 'B/L ' + d.bill_of_lading
+        : d.cargo_id ?? (isUnknownDocType(d.document_type) ? 'Pending document' : 'Unassigned - B/L not detected');
       const cargos = byClient.get(clientName) ?? new Map<string, PendingDoc[]>();
       const list = cargos.get(groupId) ?? [];
       list.push(d);
@@ -291,8 +294,17 @@ export function PendingDocumentsPage() {
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
                                           {actionBlocked ? (
-                                            <div className="text-xs mt-1" style={{ color: 'var(--destructive)' }}>
-                                              {doc.action_block_reason ?? 'B/L validation is required before this document can be actioned.'}
+                                            <div
+                                              className="mt-2 flex items-start gap-2 rounded border px-3 py-2 text-xs"
+                                              style={{ background: 'rgba(17, 24, 39, 0.84)', borderColor: 'rgba(148, 163, 184, 0.45)', color: '#f8fafc' }}
+                                            >
+                                              <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                              <div>
+                                                <div className="font-semibold">Action locked pending B/L review{doc.bill_of_lading ? ': ' + doc.bill_of_lading : ''}</div>
+                                                <div className="mt-0.5" style={{ color: '#cbd5e1' }}>
+                                                  {doc.action_block_reason ?? 'This document can be opened, but cannot be approved or rejected until its B/L is approved.'}
+                                                </div>
+                                              </div>
                                             </div>
                                           ) : null}
                                           </div>
