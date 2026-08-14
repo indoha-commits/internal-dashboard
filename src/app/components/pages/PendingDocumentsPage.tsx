@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText, FileCheck, FileSpreadsheet, Scroll, Receipt, ClipboardList, Ship, Truck, LockKeyhole } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Search, Loader2, FileText, FileCheck, FileSpreadsheet, Scroll, Receipt, ClipboardList, Ship, Truck, LockKeyhole, Link2 } from 'lucide-react';
 import {
   getOpsDocumentSignedUrl,
   getOpsPendingDocuments,
   verifyDocument,
+  linkPendingDocumentToBatchBillOfLading,
   type OpsPendingDocumentsResponse,
 } from '@/app/api/ops';
 import { CrossPageStatus } from '@/app/components/CrossPageStatus';
@@ -58,6 +59,7 @@ export function PendingDocumentsPage() {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [verifyState, setVerifyState] = useState<Record<string, 'idle' | 'loading' | 'done'>>({});
   const [documentTypeSelections, setDocumentTypeSelections] = useState<Record<string, string>>({});
+  const [batchBlSelections, setBatchBlSelections] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const refresh = async () => {
@@ -170,6 +172,24 @@ export function PendingDocumentsPage() {
     }
   };
 
+  const linkToBatchBillOfLading = async (doc: PendingDoc) => {
+    const validationRequestId = batchBlSelections[doc.id];
+    if (!validationRequestId) return;
+    setBusy((m) => ({ ...m, [`link:${doc.id}`]: true }));
+    try {
+      const result = await linkPendingDocumentToBatchBillOfLading({
+        document_id: doc.id,
+        validation_request_id: validationRequestId,
+      });
+      toast({ type: 'success', message: `Linked to B/L ${result.bill_of_lading}; document actions remain locked until validation is approved.` });
+      await refresh();
+    } catch (e) {
+      toast({ type: 'error', message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy((m) => ({ ...m, [`link:${doc.id}`]: false }));
+    }
+  };
+
   const submitReject = async () => {
     if (!rejectDialog) return;
     const reason = rejectDialog.reason.trim();
@@ -279,6 +299,8 @@ export function PendingDocumentsPage() {
                                     const verifying = Boolean(busy[doc.id]);
                                     const opening = Boolean(busy[`open:${doc.id}`]);
                                     const actionBlocked = Boolean(doc.action_blocked);
+                                    const batchCandidates = doc.batch_bl_candidates ?? [];
+                                    const linking = Boolean(busy[`link:${doc.id}`]);
                                     return (
                                       <div key={doc.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                         <div className="flex items-center gap-2">
@@ -301,6 +323,33 @@ export function PendingDocumentsPage() {
                                               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                                               Associated with B/L {doc.bill_of_lading}
                                               {doc.bl_validation_status === 'pending' ? ' · awaiting validation' : ''}
+                                            </div>
+                                          ) : null}
+                                          {!doc.bill_of_lading && batchCandidates.length > 0 ? (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs" style={{ background: 'rgba(17, 24, 39, 0.84)', borderColor: 'rgba(148, 163, 184, 0.45)', color: '#f8fafc' }}>
+                                              <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                              <span className="font-semibold">B/L detected in this upload batch</span>
+                                              <select
+                                                aria-label="Select detected bill of lading"
+                                                value={batchBlSelections[doc.id] ?? ''}
+                                                disabled={linking}
+                                                onChange={(event) => setBatchBlSelections((current) => ({ ...current, [doc.id]: event.target.value }))}
+                                                className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+                                              >
+                                                <option value="">Select B/L…</option>
+                                                {batchCandidates.map((candidate) => (
+                                                  <option key={candidate.request_id} value={candidate.request_id}>{candidate.bill_of_lading}</option>
+                                                ))}
+                                              </select>
+                                              <Button
+                                                variant="outline"
+                                                disabled={linking || !batchBlSelections[doc.id]}
+                                                onClick={() => void linkToBatchBillOfLading(doc)}
+                                                className="h-7 border-slate-400 bg-transparent px-2 text-xs text-slate-100 hover:bg-slate-800"
+                                              >
+                                                {linking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                                                Link
+                                              </Button>
                                             </div>
                                           ) : null}
                                           {actionBlocked ? (

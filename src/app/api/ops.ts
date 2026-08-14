@@ -78,8 +78,19 @@ export type OpsPendingDocumentsResponse = {
     bl_validation_status?: 'pending' | 'rejected' | 'approved' | 'unresolved';
     bl_validation_request_id?: string | null;
     action_block_reason?: string | null;
+    batch_bl_candidates?: Array<{ request_id: string; bill_of_lading: string }>;
   }>;
 };
+
+export async function linkPendingDocumentToBatchBillOfLading(input: {
+  document_id: string;
+  validation_request_id: string;
+}): Promise<{ ok: true; bill_of_lading: string }> {
+  return await fetchJson('/ops/pending-documents/link-batch-bl', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
 
 export async function getOpsPendingDocuments(): Promise<OpsPendingDocumentsResponse> {
   return await fetchJson<OpsPendingDocumentsResponse>('/ops/pending-documents');
