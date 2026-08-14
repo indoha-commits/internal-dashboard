@@ -329,7 +329,7 @@ export function PendingDocumentsPage() {
                                                     : `Associated with B/L ${doc.bill_of_lading}`}
                                                 </span>
                                               ) : (
-                                                <span className="font-semibold">B/L detected in this upload batch</span>
+                                                <span className="font-semibold">Candidate B/Ls from this intake collection</span>
                                               )}
                                               {!doc.bill_of_lading && (
                                                 <>
