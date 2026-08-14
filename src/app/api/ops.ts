@@ -84,7 +84,8 @@ export type OpsPendingDocumentsResponse = {
     bl_validation_status?: 'pending' | 'rejected' | 'approved' | 'unresolved';
     bl_validation_request_id?: string | null;
     action_block_reason?: string | null;
-    batch_bl_candidates?: Array<{ request_id: string; bill_of_lading: string }>;
+    intake_collection_status?: 'open' | 'closed' | null;
+    batch_bl_candidates?: Array<{ request_id: string; bill_of_lading: string; status: 'pending' | 'approved'; selectable: boolean }>;
   }>;
 };
 

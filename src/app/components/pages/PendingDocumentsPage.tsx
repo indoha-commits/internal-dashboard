@@ -315,7 +315,7 @@ export function PendingDocumentsPage() {
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
-                                          {(doc.bill_of_lading || batchCandidates.length > 0) ? (
+                                          {(doc.bill_of_lading || batchCandidates.length > 0 || doc.intake_collection_status === 'open') ? (
                                             <div className="mt-2 flex flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs" style={{ background: 'rgba(17, 24, 39, 0.84)', borderColor: doc.bl_validation_status === 'approved' ? 'rgba(34, 197, 94, 0.55)' : 'rgba(148, 163, 184, 0.45)', color: '#f8fafc' }}>
                                               {doc.bl_validation_status === 'approved' ? (
                                                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" aria-hidden="true" />
@@ -331,7 +331,8 @@ export function PendingDocumentsPage() {
                                               ) : (
                                                 <span className="font-semibold">Candidate B/Ls from this intake collection</span>
                                               )}
-                                              {!doc.bill_of_lading && (
+                                              {!doc.bill_of_lading && doc.intake_collection_status === 'open' ? <span className="text-slate-300">intake collection is still receiving documents</span> : null}
+                                              {!doc.bill_of_lading && batchCandidates.length > 0 && (
                                                 <>
                                                   <select
                                                     aria-label="Select detected bill of lading"
@@ -342,7 +343,9 @@ export function PendingDocumentsPage() {
                                                   >
                                                     <option value="">Select B/L…</option>
                                                     {batchCandidates.map((candidate) => (
-                                                      <option key={candidate.request_id} value={candidate.request_id}>{candidate.bill_of_lading}</option>
+                                                      <option key={candidate.request_id} value={candidate.request_id} disabled={!candidate.selectable}>
+                                                        {candidate.bill_of_lading}{candidate.selectable ? '' : ' (awaiting validation)'}
+                                                      </option>
                                                     ))}
                                                   </select>
                                                   <Button
@@ -357,6 +360,7 @@ export function PendingDocumentsPage() {
                                                 </>
                                               )}
                                               {doc.bl_validation_status === 'pending' ? <span className="text-slate-300">awaiting validation</span> : null}
+                                              {!doc.bill_of_lading && batchCandidates.some((candidate) => !candidate.selectable) ? <span className="text-slate-300">pending B/Ls are locked</span> : null}
                                             </div>
                                           ) : null}
                                           {actionBlocked ? (
