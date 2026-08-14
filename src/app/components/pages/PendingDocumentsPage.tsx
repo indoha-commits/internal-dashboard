@@ -315,41 +315,48 @@ export function PendingDocumentsPage() {
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
-                                          {doc.bill_of_lading ? (
-                                            <div
-                                              className="mt-2 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium"
-                                              style={{ background: 'rgba(22, 163, 74, 0.12)', borderColor: 'rgba(34, 197, 94, 0.45)', color: '#15803d' }}
-                                            >
-                                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                                              Associated with B/L {doc.bill_of_lading}
-                                              {doc.bl_validation_status === 'pending' ? ' · awaiting validation' : ''}
-                                            </div>
-                                          ) : null}
-                                          {!doc.bill_of_lading && batchCandidates.length > 0 ? (
-                                            <div className="mt-2 flex flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs" style={{ background: 'rgba(17, 24, 39, 0.84)', borderColor: 'rgba(148, 163, 184, 0.45)', color: '#f8fafc' }}>
-                                              <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                              <span className="font-semibold">B/L detected in this upload batch</span>
-                                              <select
-                                                aria-label="Select detected bill of lading"
-                                                value={batchBlSelections[doc.id] ?? ''}
-                                                disabled={linking}
-                                                onChange={(event) => setBatchBlSelections((current) => ({ ...current, [doc.id]: event.target.value }))}
-                                                className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-xs text-slate-100"
-                                              >
-                                                <option value="">Select B/L…</option>
-                                                {batchCandidates.map((candidate) => (
-                                                  <option key={candidate.request_id} value={candidate.request_id}>{candidate.bill_of_lading}</option>
-                                                ))}
-                                              </select>
-                                              <Button
-                                                variant="outline"
-                                                disabled={linking || !batchBlSelections[doc.id]}
-                                                onClick={() => void linkToBatchBillOfLading(doc)}
-                                                className="h-7 border-slate-400 bg-transparent px-2 text-xs text-slate-100 hover:bg-slate-800"
-                                              >
-                                                {linking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                                                Link
-                                              </Button>
+                                          {(doc.bill_of_lading || batchCandidates.length > 0) ? (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs" style={{ background: 'rgba(17, 24, 39, 0.84)', borderColor: doc.bl_validation_status === 'approved' ? 'rgba(34, 197, 94, 0.55)' : 'rgba(148, 163, 184, 0.45)', color: '#f8fafc' }}>
+                                              {doc.bl_validation_status === 'approved' ? (
+                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" aria-hidden="true" />
+                                              ) : (
+                                                <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                              )}
+                                              {doc.bill_of_lading ? (
+                                                <span className="font-semibold">
+                                                  {doc.bl_validation_status === 'approved'
+                                                    ? `B/L ${doc.bill_of_lading} verified`
+                                                    : `Associated with B/L ${doc.bill_of_lading}`}
+                                                </span>
+                                              ) : (
+                                                <span className="font-semibold">B/L detected in this upload batch</span>
+                                              )}
+                                              {!doc.bill_of_lading && (
+                                                <>
+                                                  <select
+                                                    aria-label="Select detected bill of lading"
+                                                    value={batchBlSelections[doc.id] ?? ''}
+                                                    disabled={linking}
+                                                    onChange={(event) => setBatchBlSelections((current) => ({ ...current, [doc.id]: event.target.value }))}
+                                                    className="rounded border border-slate-500 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+                                                  >
+                                                    <option value="">Select B/L…</option>
+                                                    {batchCandidates.map((candidate) => (
+                                                      <option key={candidate.request_id} value={candidate.request_id}>{candidate.bill_of_lading}</option>
+                                                    ))}
+                                                  </select>
+                                                  <Button
+                                                    variant="outline"
+                                                    disabled={linking || !batchBlSelections[doc.id]}
+                                                    onClick={() => void linkToBatchBillOfLading(doc)}
+                                                    className="h-7 border-slate-400 bg-transparent px-2 text-xs text-slate-100 hover:bg-slate-800"
+                                                  >
+                                                    {linking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                                                    Link
+                                                  </Button>
+                                                </>
+                                              )}
+                                              {doc.bl_validation_status === 'pending' ? <span className="text-slate-300">awaiting validation</span> : null}
                                             </div>
                                           ) : null}
                                           {actionBlocked ? (
