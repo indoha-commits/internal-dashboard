@@ -20,6 +20,8 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
 
         if (window.location.hash?.includes('access_token=')) {
           try {
+            const handoffSessionId = new URLSearchParams(window.location.hash.slice(1)).get('internal_session_id');
+            if (handoffSessionId) sessionStore.setId(handoffSessionId);
             await setSessionFromUrlHash();
             const cb = window.location.pathname.indexOf('/auth/callback');
             const next = cb === -1 ? window.location.pathname : window.location.pathname.slice(0, cb) || '/';
