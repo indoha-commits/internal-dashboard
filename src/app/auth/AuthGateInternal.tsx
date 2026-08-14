@@ -40,7 +40,12 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
           if (!existing) sessionStore.setId(sessionId);
 
           let claimed = false;
-          const claim = async () => {
+          let claimInFlight: Promise<void> | null = null;
+          const claim = (): Promise<void> => {
+            if (claimed) return Promise.resolve();
+            if (claimInFlight) return claimInFlight;
+
+            claimInFlight = (async () => {
             try {
               const result = await claimInternalSession(sessionId);
               if (!result.ok) {
@@ -51,13 +56,20 @@ export function AuthGateInternal({ children }: { children: React.ReactNode }) {
               }
               claimed = true;
               setLockMessage(null);
-            } catch {
-              claimed = false;
-              toast({ type: 'warning', message: 'Unable to claim the internal session' });
-            }
+              } catch {
+                claimed = false;
+                toast({ type: 'warning', message: 'Unable to claim the internal session' });
+              } finally {
+                claimInFlight = null;
+              }
+            })();
+
+            return claimInFlight;
           };
 
-          unsub = await initSupabaseAuth(claim);
+          unsub = await initSupabaseAuth(({ authenticated }) => {
+            if (authenticated) void claim();
+          });
           const interval = window.setInterval(() => {
             if (!claimed) return;
             void heartbeatInternalSession(sessionId).catch(() => {
