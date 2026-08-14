@@ -211,6 +211,7 @@ export default function App() {
           console.warn('Failed to release internal session lock', e);
         }
       }
+      sessionStore.clear();
 
       const sb = getSupabase();
       await sb.auth.signOut();

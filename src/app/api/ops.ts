@@ -1,4 +1,4 @@
-import { fetchJson } from './client';
+import { fetchJson, getAuthHeader, getBaseUrl } from './client';
 
 export type MeResponse = {
   id: string;
@@ -13,13 +13,18 @@ export async function getMe(): Promise<MeResponse> {
 
 export type ClaimInternalSessionResponse =
   | { ok: true; session_id: string; expires_at: string }
-  | { ok: false; error: 'session_locked'; detail: string };
+  | { ok: false; error: 'session_locked'; detail: string; expires_at?: string | null };
 
 export async function claimInternalSession(sessionId: string): Promise<ClaimInternalSessionResponse> {
-  return await fetchJson<ClaimInternalSessionResponse>('/ops/internal-session/claim', {
+  const response = await fetch(`${getBaseUrl()}/ops/internal-session/claim`, {
     method: 'POST',
+    headers: { 'content-type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify({ session_id: sessionId }),
   });
+  const payload = await response.json().catch(() => null) as ClaimInternalSessionResponse | null;
+  if (response.status === 409 && payload && !payload.ok && payload.error === 'session_locked') return payload;
+  if (!response.ok || !payload) throw new Error(`POST /ops/internal-session/claim failed: ${response.status}`);
+  return payload;
 }
 
 export async function heartbeatInternalSession(sessionId: string): Promise<{ ok: true; expires_at: string }> {
@@ -33,6 +38,7 @@ export async function releaseInternalSession(sessionId: string): Promise<{ ok: t
   return await fetchJson<{ ok: true }>('/ops/internal-session/release', {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId }),
+    keepalive: true,
   });
 }
 
