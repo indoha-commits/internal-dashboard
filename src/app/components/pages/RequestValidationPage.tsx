@@ -388,8 +388,9 @@ export function RequestValidationPage() {
             (candidate) => candidate.context === 'fallback_column',
           ) ? (
             <div className="space-y-2">
-              <Label>Fallback container OCR</Label>
-              <div className="space-y-1 rounded border border-default p-3">
+              <Label>Fallback container OCR confirmation</Label>
+              <div className="space-y-2 rounded border border-default p-3">
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Select only IDs verified against the file. Selected values are stored as operator-confirmed fallback evidence.</p>
                 {approveDialog.request.detected_container_candidates
                   .filter((candidate) => candidate.context === 'fallback_column')
                   .map((candidate) => {
@@ -411,7 +412,7 @@ export function RequestValidationPage() {
                             } : previous)
                           }
                         />
-                        <span>{id}</span>
+                        <span className="font-mono">{id}</span>
                       </label>
                     );
                   })}
@@ -453,6 +454,9 @@ export function RequestValidationPage() {
             <DialogTitle>Reject request</DialogTitle>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {rejectDialog ? `Provide a reason for rejection. Uploaded ${new Date(rejectDialog.request.created_at).toLocaleString()}.` : ''}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Manual cargo creation is available only after this request is rejected.
             </p>
           </DialogHeader>
           <Input
