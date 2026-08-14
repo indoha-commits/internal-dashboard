@@ -293,6 +293,16 @@ export function PendingDocumentsPage() {
                                           <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                                             Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'unknown'}
                                           </div>
+                                          {doc.bill_of_lading ? (
+                                            <div
+                                              className="mt-2 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium"
+                                              style={{ background: 'rgba(22, 163, 74, 0.12)', borderColor: 'rgba(34, 197, 94, 0.45)', color: '#15803d' }}
+                                            >
+                                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                              Associated with B/L {doc.bill_of_lading}
+                                              {doc.bl_validation_status === 'pending' ? ' · awaiting validation' : ''}
+                                            </div>
+                                          ) : null}
                                           {actionBlocked ? (
                                             <div
                                               className="mt-2 flex items-start gap-2 rounded border px-3 py-2 text-xs"
