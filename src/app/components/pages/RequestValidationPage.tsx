@@ -60,6 +60,24 @@ type ApprovePayload = {
   verified_container_ids?: string[];
 };
 
+function normalizeContainerId(value: unknown): string {
+  return String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function requestContainerEvidence(request: RequestRow): string[] {
+  return Array.from(new Set(
+    (request.detected_container_candidates ?? [])
+      .map((candidate) => normalizeContainerId(candidate.normalized ?? candidate.raw_value))
+      .filter(Boolean),
+  ));
+}
+
+function initialConfirmedContainerIds(request: RequestRow): string {
+  return requestContainerEvidence(request)
+    .filter((value) => /^[A-Z]{4}[0-9]{7}$/.test(value))
+    .join(', ');
+}
+
 async function approveRequest(payload: ApprovePayload): Promise<{ cargo?: Record<string, unknown> }> {
   return await fetchJson(`/ops/requests/approve`, { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -89,7 +107,7 @@ export function RequestValidationPage() {
     clearancePathway: 'PORT_CLEARANCE' | 'T1_TRANSIT';
     expectedArrival: string;
     containerCount: string;
-    fallbackCandidates: string[];
+    confirmedContainerIds: string;
     selectedClientId: string;
     phoneNumber: string;
   } | null>(null);
@@ -151,8 +169,14 @@ export function RequestValidationPage() {
       }
       const cc = Number(approveDialog.containerCount);
       if (Number.isFinite(cc) && cc >= 1) payload.container_count = cc;
-      if (approveDialog.fallbackCandidates.length) {
-        payload.verified_container_ids = approveDialog.fallbackCandidates;
+      const confirmedContainerIds = Array.from(new Set(
+        approveDialog.confirmedContainerIds
+          .split(/[\s,;]+/)
+          .map(normalizeContainerId)
+          .filter(Boolean),
+      ));
+      if (confirmedContainerIds.length) {
+        payload.verified_container_ids = confirmedContainerIds;
       }
       if (!approveDialog.request.linked) {
         const phoneDigits = approveDialog.phoneNumber.replace(/\D/g, '');
@@ -277,8 +301,8 @@ export function RequestValidationPage() {
                           request: req,
                           clearancePathway: 'PORT_CLEARANCE',
                           expectedArrival: '',
-                          containerCount: '1',
-                          fallbackCandidates: [],
+                          containerCount: '',
+                          confirmedContainerIds: initialConfirmedContainerIds(req),
                           selectedClientId: '',
                           phoneNumber: '',
                         })
@@ -384,39 +408,29 @@ export function RequestValidationPage() {
               className="bg-background"
             />
           </div>
-          {approveDialog?.request.detected_container_candidates?.some(
-            (candidate) => candidate.context === 'fallback_column',
-          ) ? (
+          {approveDialog && requestContainerEvidence(approveDialog.request).length ? (
             <div className="space-y-2">
-              <Label>Fallback container OCR confirmation</Label>
+              <Label>Detected container readings</Label>
               <div className="space-y-2 rounded border border-default p-3">
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Select only IDs verified against the file. Selected values are stored as operator-confirmed fallback evidence.</p>
-                {approveDialog.request.detected_container_candidates
-                  .filter((candidate) => candidate.context === 'fallback_column')
-                  .map((candidate) => {
-                    const id = String(candidate.normalized ?? candidate.raw_value ?? '')
-                      .trim()
-                      .toUpperCase();
-                    const checked = approveDialog.fallbackCandidates.includes(id);
-                    return (
-                      <label key={id} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            setApproveDialog((previous: any) => previous ? {
-                              ...previous,
-                              fallbackCandidates: checked
-                                ? previous.fallbackCandidates.filter((value: string) => value !== id)
-                                : [...previous.fallbackCandidates, id],
-                            } : previous)
-                          }
-                        />
-                        <span className="font-mono">{id}</span>
-                      </label>
-                    );
-                  })}
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Review against the file. OCR can misread characters in container columns.</p>
+                <ul className="space-y-1 text-sm">
+                  {requestContainerEvidence(approveDialog.request).map((id) => (
+                    <li key={id} className="font-mono">{id}</li>
+                  ))}
+                </ul>
               </div>
+              <Label htmlFor="confirmed-container-ids">Confirmed container IDs</Label>
+              <Input
+                id="confirmed-container-ids"
+                value={approveDialog.confirmedContainerIds}
+                onChange={(event) => setApproveDialog((previous: any) => previous ? {
+                  ...previous,
+                  confirmedContainerIds: event.target.value,
+                } : previous)}
+                className="bg-background font-mono"
+                placeholder="e.g. MSCU1234567, TGHU7654321"
+              />
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Enter only the IDs you verify. Each must be four letters followed by seven digits; approval records them as operator-confirmed and creates cargo with those IDs.</p>
             </div>
           ) : null}
           <div className="space-y-2">
