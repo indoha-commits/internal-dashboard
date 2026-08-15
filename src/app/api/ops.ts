@@ -1,42 +1,67 @@
-import { fetchJson, getAuthHeader, getBaseUrl } from './client';
+import { fetchJson, getAuthHeader, getBaseUrl } from "./client";
 
 export type MeResponse = {
   id: string;
   email: string;
-  role: 'client' | 'ops' | 'admin';
+  role: "client" | "ops" | "admin";
   client_id: string | null;
 };
 
 export async function getMe(): Promise<MeResponse> {
-  return await fetchJson<MeResponse>('/me');
+  return await fetchJson<MeResponse>("/me");
 }
 
 export type ClaimInternalSessionResponse =
   | { ok: true; session_id: string; expires_at: string }
-  | { ok: false; error: 'session_locked'; detail: string; expires_at?: string | null };
+  | {
+      ok: false;
+      error: "session_locked";
+      detail: string;
+      expires_at?: string | null;
+    };
 
-export async function claimInternalSession(sessionId: string): Promise<ClaimInternalSessionResponse> {
+export async function claimInternalSession(
+  sessionId: string,
+): Promise<ClaimInternalSessionResponse> {
   const response = await fetch(`${getBaseUrl()}/ops/internal-session/claim`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...getAuthHeader() },
+    method: "POST",
+    headers: { "content-type": "application/json", ...getAuthHeader() },
     body: JSON.stringify({ session_id: sessionId }),
   });
-  const payload = await response.json().catch(() => null) as ClaimInternalSessionResponse | null;
-  if (response.status === 409 && payload && !payload.ok && payload.error === 'session_locked') return payload;
-  if (!response.ok || !payload) throw new Error(`POST /ops/internal-session/claim failed: ${response.status}`);
+  const payload = (await response
+    .json()
+    .catch(() => null)) as ClaimInternalSessionResponse | null;
+  if (
+    response.status === 409 &&
+    payload &&
+    !payload.ok &&
+    payload.error === "session_locked"
+  )
+    return payload;
+  if (!response.ok || !payload)
+    throw new Error(
+      `POST /ops/internal-session/claim failed: ${response.status}`,
+    );
   return payload;
 }
 
-export async function heartbeatInternalSession(sessionId: string): Promise<{ ok: true; expires_at: string }> {
-  return await fetchJson<{ ok: true; expires_at: string }>('/ops/internal-session/heartbeat', {
-    method: 'POST',
-    body: JSON.stringify({ session_id: sessionId }),
-  });
+export async function heartbeatInternalSession(
+  sessionId: string,
+): Promise<{ ok: true; expires_at: string }> {
+  return await fetchJson<{ ok: true; expires_at: string }>(
+    "/ops/internal-session/heartbeat",
+    {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId }),
+    },
+  );
 }
 
-export async function releaseInternalSession(sessionId: string): Promise<{ ok: true }> {
-  return await fetchJson<{ ok: true }>('/ops/internal-session/release', {
-    method: 'POST',
+export async function releaseInternalSession(
+  sessionId: string,
+): Promise<{ ok: true }> {
+  return await fetchJson<{ ok: true }>("/ops/internal-session/release", {
+    method: "POST",
     body: JSON.stringify({ session_id: sessionId }),
     keepalive: true,
   });
@@ -63,13 +88,15 @@ export type OpsDashboardResponse = {
 };
 
 export async function getOpsDashboard(): Promise<OpsDashboardResponse> {
-  return await fetchJson<OpsDashboardResponse>('/ops/dashboard');
+  return await fetchJson<OpsDashboardResponse>("/ops/dashboard");
 }
 
 export type OpsPendingDocumentsResponse = {
   documents: Array<{
     id: string;
-    cargo_id: string;
+    cargo_id: string | null;
+    cargo_group_id?: string | null;
+    container_id?: string | null;
     bill_of_lading: string | null;
     document_type: string;
     document_type_label?: string;
@@ -80,12 +107,25 @@ export type OpsPendingDocumentsResponse = {
     client_name: string | null;
     rejection_reason?: string | null;
     action_blocked?: boolean;
-    bl_association_source?: 'ocr_document' | 'single_pending_client_validation' | string | null;
-    bl_validation_status?: 'pending' | 'rejected' | 'approved' | 'unresolved';
+    lifecycle_state?:
+      | "UNASSIGNED"
+      | "CANDIDATE_AVAILABLE"
+      | "LINKED_WAITING_BL"
+      | "LINKED_REJECTED"
+      | "LINK_FAILED"
+      | "READY_FOR_REVIEW";
+    bl_association_source?:
+      "ocr_document" | "single_pending_client_validation" | string | null;
+    bl_validation_status?: "pending" | "rejected" | "approved" | "unresolved";
     bl_validation_request_id?: string | null;
     action_block_reason?: string | null;
-    intake_collection_status?: 'open' | 'closed' | null;
-    batch_bl_candidates?: Array<{ request_id: string; bill_of_lading: string; status: 'pending' | 'approved'; selectable: boolean }>;
+    intake_collection_status?: "open" | "closed" | null;
+    batch_bl_candidates?: Array<{
+      request_id: string;
+      bill_of_lading: string;
+      status: "pending" | "approved";
+      selectable: boolean;
+    }>;
   }>;
 };
 
@@ -93,14 +133,14 @@ export async function linkPendingDocumentToBatchBillOfLading(input: {
   document_id: string;
   validation_request_id: string;
 }): Promise<{ ok: true; bill_of_lading: string }> {
-  return await fetchJson('/ops/pending-documents/link-batch-bl', {
-    method: 'POST',
+  return await fetchJson("/ops/pending-documents/link-batch-bl", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export async function getOpsPendingDocuments(): Promise<OpsPendingDocumentsResponse> {
-  return await fetchJson<OpsPendingDocumentsResponse>('/ops/pending-documents');
+  return await fetchJson<OpsPendingDocumentsResponse>("/ops/pending-documents");
 }
 
 export type OpsCargoRegistryResponse = {
@@ -129,7 +169,7 @@ export type OpsCargoRegistryResponse = {
 };
 
 export async function getOpsCargoRegistry(): Promise<OpsCargoRegistryResponse> {
-  return await fetchJson<OpsCargoRegistryResponse>('/ops/cargo-registry');
+  return await fetchJson<OpsCargoRegistryResponse>("/ops/cargo-registry");
 }
 
 export type OpsCargoTimelineResponse = {
@@ -167,15 +207,25 @@ export type OpsCargoTimelineResponse = {
   }>;
 };
 
-export async function getOpsCargoTimeline(cargoId: string): Promise<OpsCargoTimelineResponse> {
-  return await fetchJson<OpsCargoTimelineResponse>(`/ops/cargo/${encodeURIComponent(cargoId)}/timeline`);
+export async function getOpsCargoTimeline(
+  cargoId: string,
+): Promise<OpsCargoTimelineResponse> {
+  return await fetchJson<OpsCargoTimelineResponse>(
+    `/ops/cargo/${encodeURIComponent(cargoId)}/timeline`,
+  );
 }
 
-export async function recordOpsCargoEvent(cargoId: string, eventType: string): Promise<{ event: any }> {
-  return await fetchJson<{ event: any }>(`/ops/cargo/${encodeURIComponent(cargoId)}/timeline`, {
-    method: 'POST',
-    body: JSON.stringify({ event_type: eventType }),
-  });
+export async function recordOpsCargoEvent(
+  cargoId: string,
+  eventType: string,
+): Promise<{ event: any }> {
+  return await fetchJson<{ event: any }>(
+    `/ops/cargo/${encodeURIComponent(cargoId)}/timeline`,
+    {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType }),
+    },
+  );
 }
 
 export type OpsActivityLogResponse = {
@@ -189,7 +239,7 @@ export type OpsActivityLogResponse = {
 };
 
 export async function getOpsActivityLog(): Promise<OpsActivityLogResponse> {
-  return await fetchJson<OpsActivityLogResponse>('/ops/activity-log');
+  return await fetchJson<OpsActivityLogResponse>("/ops/activity-log");
 }
 
 export type OpsValidationQueueItem = {
@@ -201,14 +251,14 @@ export type OpsValidationQueueItem = {
     document_type: string;
     uploaded_at: string | null;
     verified_at: string | null;
-    status: 'REQUIRED' | 'UPLOADED' | 'VERIFIED';
+    status: "REQUIRED" | "UPLOADED" | "VERIFIED";
     drive_url: string | null;
   }>;
   assessment: {
     id: string;
     cargo_id: string;
-    kind: 'ASSESSMENT';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "ASSESSMENT";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     created_at: string;
@@ -218,20 +268,21 @@ export type OpsValidationQueueItem = {
   draft: {
     id: string;
     cargo_id: string;
-    kind: 'DECLARATION_DRAFT';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "DECLARATION_DRAFT";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     created_at: string;
     decided_at: string | null;
     rejection_reason: string | null;
   } | null;
-  validation_status: 'pending_upload' | 'pending_validation' | 'validated' | 'failed';
+  validation_status:
+    "pending_upload" | "pending_validation" | "validated" | "failed";
   wh7: {
     id: string;
     cargo_id: string;
-    kind: 'WH7_DOC';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "WH7_DOC";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     created_at: string;
@@ -241,8 +292,8 @@ export type OpsValidationQueueItem = {
   exit_note: {
     id: string;
     cargo_id: string;
-    kind: 'EXIT_NOTE';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "EXIT_NOTE";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     created_at: string;
@@ -252,8 +303,8 @@ export type OpsValidationQueueItem = {
   im8: {
     id: string;
     cargo_id: string;
-    kind: 'IM8';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "IM8";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     created_at: string;
@@ -270,12 +321,12 @@ export type OpsValidationQueueResponse = {
 };
 
 export async function getOpsValidationQueue(): Promise<OpsValidationQueueResponse> {
-  return await fetchJson<OpsValidationQueueResponse>('/ops/validation-queue');
+  return await fetchJson<OpsValidationQueueResponse>("/ops/validation-queue");
 }
 
 export type OpsVerifyDocumentRequest = {
   document_id: string;
-  action: 'approve' | 'reject';
+  action: "approve" | "reject";
   document_type?: string;
   rejection_reason?: string;
 };
@@ -284,33 +335,47 @@ export type OpsVerifyDocumentResponse = {
   ok: boolean;
 };
 
-export async function verifyDocument(payload: OpsVerifyDocumentRequest): Promise<OpsVerifyDocumentResponse> {
-  return await fetchJson<OpsVerifyDocumentResponse>('/ops/verify-document', {
-    method: 'POST',
+export async function verifyDocument(
+  payload: OpsVerifyDocumentRequest,
+): Promise<OpsVerifyDocumentResponse> {
+  return await fetchJson<OpsVerifyDocumentResponse>("/ops/verify-document", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export type OpsSignedUrlResponse = {
   url: string;
-  kind: 'drive' | 'storage';
+  kind: "drive" | "storage";
   expires_in?: number;
 };
 
-export async function getOpsDocumentSignedUrl(documentId: string): Promise<OpsSignedUrlResponse> {
-  return await fetchJson<OpsSignedUrlResponse>(`/ops/documents/${encodeURIComponent(documentId)}/signed-url`);
+export async function getOpsDocumentSignedUrl(
+  documentId: string,
+): Promise<OpsSignedUrlResponse> {
+  return await fetchJson<OpsSignedUrlResponse>(
+    `/ops/documents/${encodeURIComponent(documentId)}/signed-url`,
+  );
 }
 
-export async function getOpsApprovalSignedUrl(approvalId: string): Promise<OpsSignedUrlResponse> {
-  return await fetchJson<OpsSignedUrlResponse>(`/ops/approvals/${encodeURIComponent(approvalId)}/signed-url`);
+export async function getOpsApprovalSignedUrl(
+  approvalId: string,
+): Promise<OpsSignedUrlResponse> {
+  return await fetchJson<OpsSignedUrlResponse>(
+    `/ops/approvals/${encodeURIComponent(approvalId)}/signed-url`,
+  );
 }
 
 export type OpsClientsResponse = {
   clients: Array<{ id: string; name: string }>;
 };
 
-export async function getOpsClients(category?: string): Promise<OpsClientsResponse> {
-  const path = category ? `/ops/clients?category=${encodeURIComponent(category)}` : '/ops/clients';
+export async function getOpsClients(
+  category?: string,
+): Promise<OpsClientsResponse> {
+  const path = category
+    ? `/ops/clients?category=${encodeURIComponent(category)}`
+    : "/ops/clients";
   return await fetchJson<OpsClientsResponse>(path);
 }
 
@@ -328,21 +393,33 @@ export type OpsCreateClientResponse = {
 };
 
 export async function deleteOpsClient(clientId: string): Promise<{ ok: true }> {
-  return await fetchJson<{ ok: true }>(`/ops/clients/${encodeURIComponent(clientId)}`, {
-    method: 'DELETE',
-  });
+  return await fetchJson<{ ok: true }>(
+    `/ops/clients/${encodeURIComponent(clientId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
-export async function addOpsClientUser(clientId: string, email: string, password: string): Promise<{ ok: true; userId: string; email: string }> {
-  return await fetchJson<{ ok: true; userId: string; email: string }>(`/ops/clients/${encodeURIComponent(clientId)}/users`, {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
+export async function addOpsClientUser(
+  clientId: string,
+  email: string,
+  password: string,
+): Promise<{ ok: true; userId: string; email: string }> {
+  return await fetchJson<{ ok: true; userId: string; email: string }>(
+    `/ops/clients/${encodeURIComponent(clientId)}/users`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    },
+  );
 }
 
-export async function createOpsClient(payload: OpsCreateClientRequest): Promise<OpsCreateClientResponse> {
-  return await fetchJson<OpsCreateClientResponse>('/ops/clients', {
-    method: 'POST',
+export async function createOpsClient(
+  payload: OpsCreateClientRequest,
+): Promise<OpsCreateClientResponse> {
+  return await fetchJson<OpsCreateClientResponse>("/ops/clients", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -352,8 +429,8 @@ export type OpsCreateCargoRequest = {
   container_id: string;
   container_number: string;
   expected_arrival_date: string;
-  category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
-  clearance_pathway?: 'PORT_CLEARANCE' | 'T1_TRANSIT';
+  category: "ELECTRONICS" | "RAW_MATERIALS" | "MEDS_BEVERAGE";
+  clearance_pathway?: "PORT_CLEARANCE" | "T1_TRANSIT";
   required_documents: string[];
   container_count?: number;
   destination?: string | null;
@@ -365,49 +442,67 @@ export type OpsBulkCreateCargoRequest = {
   client_id: string;
   bill_of_lading: string;
   expected_arrival_date: string;
-  category: 'ELECTRONICS' | 'RAW_MATERIALS' | 'MEDS_BEVERAGE';
-  clearance_pathway?: 'PORT_CLEARANCE' | 'T1_TRANSIT';
+  category: "ELECTRONICS" | "RAW_MATERIALS" | "MEDS_BEVERAGE";
+  clearance_pathway?: "PORT_CLEARANCE" | "T1_TRANSIT";
   required_documents: string[];
   container_count: number;
   destination?: string | null;
   origin?: string | null;
 };
 
-export type OpsCreateCargoResponse = { cargo_id: string; container_id: string | null };
+export type OpsCreateCargoResponse = {
+  cargo_id: string;
+  container_id: string | null;
+};
 
-export async function createOpsCargo(payload: OpsCreateCargoRequest): Promise<OpsCreateCargoResponse> {
-  return await fetchJson<OpsCreateCargoResponse>('/ops/cargo', {
-    method: 'POST',
+export async function createOpsCargo(
+  payload: OpsCreateCargoRequest,
+): Promise<OpsCreateCargoResponse> {
+  return await fetchJson<OpsCreateCargoResponse>("/ops/cargo", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function createOpsCargoBulk(payload: OpsBulkCreateCargoRequest): Promise<{ cargos: { id: string }[]; bill_of_lading: string }> {
-  return await fetchJson<{ cargos: { id: string }[]; bill_of_lading: string }>('/ops/cargo/bulk', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+export async function createOpsCargoBulk(
+  payload: OpsBulkCreateCargoRequest,
+): Promise<{ cargos: { id: string }[]; bill_of_lading: string }> {
+  return await fetchJson<{ cargos: { id: string }[]; bill_of_lading: string }>(
+    "/ops/cargo/bulk",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export type OpsDeleteCargoResponse = { ok: boolean; cargo_id: string };
 
-export async function deleteOpsCargo(cargoId: string): Promise<OpsDeleteCargoResponse> {
-  return await fetchJson<OpsDeleteCargoResponse>(`/ops/cargo/${encodeURIComponent(cargoId)}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function deleteOpsCargoGroup(billOfLading: string): Promise<{ ok: boolean; bill_of_lading: string; deleted: number }> {
-  return await fetchJson<{ ok: boolean; bill_of_lading: string; deleted: number }>(
-    `/ops/cargo-group/${encodeURIComponent(billOfLading)}`,
+export async function deleteOpsCargo(
+  cargoId: string,
+): Promise<OpsDeleteCargoResponse> {
+  return await fetchJson<OpsDeleteCargoResponse>(
+    `/ops/cargo/${encodeURIComponent(cargoId)}`,
     {
-      method: 'DELETE',
-    }
+      method: "DELETE",
+    },
   );
 }
 
+export async function deleteOpsCargoGroup(
+  billOfLading: string,
+): Promise<{ ok: boolean; bill_of_lading: string; deleted: number }> {
+  return await fetchJson<{
+    ok: boolean;
+    bill_of_lading: string;
+    deleted: number;
+  }>(`/ops/cargo-group/${encodeURIComponent(billOfLading)}`, {
+    method: "DELETE",
+  });
+}
+
 export type OpsCreateApprovalUploadUrlRequest = {
-  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
+  kind: "ASSESSMENT" | "DECLARATION_DRAFT" | "WH7_DOC" | "EXIT_NOTE" | "IM8";
   file_name: string;
 };
 
@@ -420,19 +515,19 @@ export type OpsCreateApprovalUploadUrlResponse = {
 
 export async function createOpsApprovalUploadUrl(
   cargoId: string,
-  payload: OpsCreateApprovalUploadUrlRequest
+  payload: OpsCreateApprovalUploadUrlRequest,
 ): Promise<OpsCreateApprovalUploadUrlResponse> {
   return await fetchJson<OpsCreateApprovalUploadUrlResponse>(
     `/ops/cargo/${encodeURIComponent(cargoId)}/approvals/upload-url`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
-    }
+    },
   );
 }
 
 export type OpsCreateCargoApprovalRequest = {
-  kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
+  kind: "ASSESSMENT" | "DECLARATION_DRAFT" | "WH7_DOC" | "EXIT_NOTE" | "IM8";
   file_url?: string | null;
   file_path?: string | null;
   notes?: string | null;
@@ -442,8 +537,8 @@ export type OpsCreateCargoApprovalResponse = {
   approval: {
     id: string;
     cargo_id: string;
-    kind: 'ASSESSMENT' | 'DECLARATION_DRAFT' | 'WH7_DOC' | 'EXIT_NOTE' | 'IM8';
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+    kind: "ASSESSMENT" | "DECLARATION_DRAFT" | "WH7_DOC" | "EXIT_NOTE" | "IM8";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
     file_url: string | null;
     file_path: string | null;
     notes: string | null;
@@ -457,12 +552,15 @@ export type OpsCreateCargoApprovalResponse = {
 
 export async function createOpsCargoApproval(
   cargoId: string,
-  payload: OpsCreateCargoApprovalRequest
+  payload: OpsCreateCargoApprovalRequest,
 ): Promise<OpsCreateCargoApprovalResponse> {
-  return await fetchJson<OpsCreateCargoApprovalResponse>(`/ops/cargo/${encodeURIComponent(cargoId)}/approvals`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return await fetchJson<OpsCreateCargoApprovalResponse>(
+    `/ops/cargo/${encodeURIComponent(cargoId)}/approvals`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export type EmailIntakeSetupGuide = {
@@ -500,8 +598,10 @@ export type EmailIntakeSetupGuide = {
   } | null;
 };
 
-export async function getEmailIntakeSetup(clientId?: string): Promise<EmailIntakeSetupGuide> {
-  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : '';
+export async function getEmailIntakeSetup(
+  clientId?: string,
+): Promise<EmailIntakeSetupGuide> {
+  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : "";
   return await fetchJson<EmailIntakeSetupGuide>(`/ops/email-intake/setup${q}`);
 }
 
@@ -509,10 +609,13 @@ export async function patchEmailIntakeClientBillingEmail(
   clientId: string,
   billingEmail: string,
 ): Promise<{ ok: boolean; client_id: string; billing_email: string }> {
-  return await fetchJson(`/ops/email-intake/clients/${encodeURIComponent(clientId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ billing_email: billingEmail }),
-  });
+  return await fetchJson(
+    `/ops/email-intake/clients/${encodeURIComponent(clientId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ billing_email: billingEmail }),
+    },
+  );
 }
 
 export async function testEmailIntakeRoute(
@@ -527,8 +630,8 @@ export async function testEmailIntakeRoute(
   pipeline: { inbound_enabled: boolean; webhook_configured: boolean };
   hint: string;
 }> {
-  return await fetchJson('/ops/email-intake/test', {
-    method: 'POST',
+  return await fetchJson("/ops/email-intake/test", {
+    method: "POST",
     body: JSON.stringify({ client_id: clientId, from_email: fromEmail }),
   });
 }
@@ -538,7 +641,7 @@ export async function testEmailIntakeRoute(
 export type OpsNumber = {
   id: string;
   phone_number: string;
-  role: 'ops' | 'company_admin';
+  role: "ops" | "company_admin";
   label: string | null;
   created_at: string;
 };
@@ -548,12 +651,12 @@ export type ListOpsNumbersResponse = {
 };
 
 export async function listOpsNumbers(): Promise<ListOpsNumbersResponse> {
-  return await fetchJson<ListOpsNumbersResponse>('/ops/tenant/ops-numbers');
+  return await fetchJson<ListOpsNumbersResponse>("/ops/tenant/ops-numbers");
 }
 
 export type AddOpsNumberInput = {
   phone_number: string;
-  role: 'ops' | 'company_admin';
+  role: "ops" | "company_admin";
   label?: string;
 };
 
@@ -561,28 +664,33 @@ export type AddOpsNumberResponse = {
   number: OpsNumber;
 };
 
-export async function addOpsNumber(input: AddOpsNumberInput): Promise<AddOpsNumberResponse> {
-  return await fetchJson<AddOpsNumberResponse>('/ops/tenant/ops-numbers', {
-    method: 'POST',
+export async function addOpsNumber(
+  input: AddOpsNumberInput,
+): Promise<AddOpsNumberResponse> {
+  return await fetchJson<AddOpsNumberResponse>("/ops/tenant/ops-numbers", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export type UpdateOpsNumberInput = {
-  role?: 'ops' | 'company_admin';
+  role?: "ops" | "company_admin";
   label?: string | null;
 };
 
-export async function updateOpsNumber(id: string, input: UpdateOpsNumberInput): Promise<{ ok: true }> {
+export async function updateOpsNumber(
+  id: string,
+  input: UpdateOpsNumberInput,
+): Promise<{ ok: true }> {
   return await fetchJson<{ ok: true }>(`/ops/tenant/ops-numbers/${id}`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(input),
   });
 }
 
 export async function deleteOpsNumber(id: string): Promise<{ ok: true }> {
   return await fetchJson<{ ok: true }>(`/ops/tenant/ops-numbers/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -603,7 +711,7 @@ export async function setClientWhatsappPhone(
   return await fetchJson<SetClientWhatsappPhoneResponse>(
     `/ops/clients/${encodeURIComponent(clientId)}/whatsapp-phone`,
     {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(input),
     },
   );
@@ -623,7 +731,9 @@ export type ListClientNumbersResponse = {
 };
 
 export async function listClientNumbers(): Promise<ListClientNumbersResponse> {
-  return await fetchJson<ListClientNumbersResponse>('/ops/tenant/client-numbers');
+  return await fetchJson<ListClientNumbersResponse>(
+    "/ops/tenant/client-numbers",
+  );
 }
 
 export type AddClientNumberInput = {
@@ -635,15 +745,20 @@ export type AddClientNumberResponse = {
   number: ClientNumberEntry | null;
 };
 
-export async function addClientNumber(input: AddClientNumberInput): Promise<AddClientNumberResponse> {
-  return await fetchJson<AddClientNumberResponse>('/ops/tenant/client-numbers', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
+export async function addClientNumber(
+  input: AddClientNumberInput,
+): Promise<AddClientNumberResponse> {
+  return await fetchJson<AddClientNumberResponse>(
+    "/ops/tenant/client-numbers",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export async function deleteClientNumber(id: string): Promise<{ ok: true }> {
   return await fetchJson<{ ok: true }>(`/ops/tenant/client-numbers/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
