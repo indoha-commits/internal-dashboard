@@ -67,6 +67,7 @@ function normalizeContainerId(value: unknown): string {
 function requestContainerEvidence(request: RequestRow): string[] {
   return Array.from(new Set(
     (request.detected_container_candidates ?? [])
+      .filter((candidate) => candidate.status !== 'REJECTED')
       .map((candidate) => normalizeContainerId(candidate.normalized ?? candidate.raw_value))
       .filter(Boolean),
   ));
