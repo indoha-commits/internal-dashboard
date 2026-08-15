@@ -72,10 +72,23 @@ function requestContainerEvidence(request: RequestRow): string[] {
   ));
 }
 
-function initialConfirmedContainerIds(request: RequestRow): string {
-  return requestContainerEvidence(request)
-    .filter((value) => /^[A-Z]{4}[0-9]{7}$/.test(value))
-    .join(', ');
+function hasValidatedContainer(request: RequestRow): boolean {
+  return (request.detected_container_candidates ?? []).some(
+    (candidate) => candidate.status === 'VALIDATED',
+  );
+}
+
+function reviewableContainerEvidence(request: RequestRow): string[] {
+  return Array.from(new Set(
+    (request.detected_container_candidates ?? [])
+      .filter((candidate) => candidate.status === 'NEEDS_REVIEW')
+      .map((candidate) => normalizeContainerId(candidate.normalized ?? candidate.raw_value))
+      .filter((value) => /^[A-Z]{4}[0-9]{7}$/.test(value)),
+  ));
+}
+
+function needsManualContainerFallback(request: RequestRow): boolean {
+  return !hasValidatedContainer(request) && reviewableContainerEvidence(request).length > 0;
 }
 
 async function approveRequest(payload: ApprovePayload): Promise<{ cargo?: Record<string, unknown> }> {
@@ -302,7 +315,8 @@ export function RequestValidationPage() {
                           clearancePathway: 'PORT_CLEARANCE',
                           expectedArrival: '',
                           containerCount: '',
-                          confirmedContainerIds: initialConfirmedContainerIds(req),
+                          // Never submit OCR readings as an operator confirmation.
+                          confirmedContainerIds: '',
                           selectedClientId: '',
                           phoneNumber: '',
                         })
@@ -412,25 +426,27 @@ export function RequestValidationPage() {
             <div className="space-y-2">
               <Label>Detected container readings</Label>
               <div className="space-y-2 rounded border border-default p-3">
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Review against the file. OCR can misread characters in container columns.</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Evidence only — rejected financial or registration identifiers cannot be confirmed as containers.</p>
                 <ul className="space-y-1 text-sm">
                   {requestContainerEvidence(approveDialog.request).map((id) => (
                     <li key={id} className="font-mono">{id}</li>
                   ))}
                 </ul>
               </div>
-              <Label htmlFor="confirmed-container-ids">Confirmed container IDs</Label>
-              <Input
-                id="confirmed-container-ids"
-                value={approveDialog.confirmedContainerIds}
-                onChange={(event) => setApproveDialog((previous: any) => previous ? {
-                  ...previous,
-                  confirmedContainerIds: event.target.value,
-                } : previous)}
-                className="bg-background font-mono"
-                placeholder="e.g. MSCU1234567, TGHU7654321"
-              />
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Enter only the IDs you verify. Each must be four letters followed by seven digits; approval records them as operator-confirmed and creates cargo with those IDs.</p>
+              {needsManualContainerFallback(approveDialog.request) ? <>
+                <Label htmlFor="confirmed-container-ids">Confirmed container IDs</Label>
+                <Input
+                  id="confirmed-container-ids"
+                  value={approveDialog.confirmedContainerIds}
+                  onChange={(event) => setApproveDialog((previous: any) => previous ? {
+                    ...previous,
+                    confirmedContainerIds: event.target.value,
+                  } : previous)}
+                  className="bg-background font-mono"
+                  placeholder="e.g. MSCU1234567, TGHU7654321"
+                />
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Manual fallback is available because no checksum-valid container was found. Enter only IDs verified against the file.</p>
+              </> : <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Validated container IDs were found, so no manual fallback is needed.</p>}
             </div>
           ) : null}
           <div className="space-y-2">
@@ -442,7 +458,7 @@ export function RequestValidationPage() {
               value={approveDialog?.containerCount ?? ''}
               onChange={(e) => setApproveDialog((prev: any) => prev ? { ...prev, containerCount: e.target.value } : prev)}
               className="bg-background"
-              placeholder="e.g. 5 (creates ISO-style placeholders if OCR finds none)"
+              placeholder="e.g. 5 (records the count only; it never creates placeholder IDs)"
             />
           </div>
           <DialogFooter>
