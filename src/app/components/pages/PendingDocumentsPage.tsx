@@ -219,6 +219,13 @@ export function PendingDocumentsPage() {
         document_type: documentType,
       });
       await refresh();
+      toast({
+        type: "success",
+        message:
+          action === "approve"
+            ? "Document verified. It has left Pending Documents and is available under the shipment."
+            : "Document rejected. It has left Pending Documents.",
+      });
       setVerifyState((s) => ({ ...s, [doc.id]: "done" }));
       window.setTimeout(() => {
         setVerifyState((s) => {
