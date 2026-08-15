@@ -38,8 +38,8 @@ type PendingDoc = OpsPendingDocumentsResponse["documents"][number];
 
 type Grouped = Array<{
   clientName: string;
-  cargos: Array<{
-    cargoId: string;
+  intakeGroups: Array<{
+    groupId: string;
     documents: PendingDoc[];
   }>;
 }>;
@@ -154,23 +154,23 @@ export function PendingDocumentsPage() {
         : (d.cargo_id ??
           (isUnknownDocType(d.document_type)
             ? "Pending document"
-            : "Unassigned - B/L not detected"));
-      const cargos =
+            : "Unassigned documents — no B/L detected"));
+      const intakeGroups =
         byClient.get(clientName) ?? new Map<string, PendingDoc[]>();
-      const list = cargos.get(groupId) ?? [];
+      const list = intakeGroups.get(groupId) ?? [];
       list.push(d);
-      cargos.set(groupId, list);
-      byClient.set(clientName, cargos);
+      intakeGroups.set(groupId, list);
+      byClient.set(clientName, intakeGroups);
     }
 
     return Array.from(byClient.entries())
       .sort(([a], [b]) => String(a ?? "").localeCompare(String(b ?? "")))
-      .map(([clientName, cargos]) => ({
+      .map(([clientName, intakeGroups]) => ({
         clientName,
-        cargos: Array.from(cargos.entries())
+        intakeGroups: Array.from(intakeGroups.entries())
           .sort(([a], [b]) => String(a ?? "").localeCompare(String(b ?? "")))
-          .map(([cargoId, documents]) => ({
-            cargoId,
+          .map(([groupId, documents]) => ({
+            groupId,
             documents: documents
               .slice()
               .sort((a, b) =>
@@ -349,6 +349,10 @@ export function PendingDocumentsPage() {
           <div className="divide-y border-default">
             {grouped.map((client) => {
               const clientOpen = expandedClients.has(client.clientName);
+              const clientDocumentCount = client.intakeGroups.reduce(
+                (count, group) => count + group.documents.length,
+                0,
+              );
               return (
                 <div key={client.clientName}>
                   <button
@@ -364,8 +368,8 @@ export function PendingDocumentsPage() {
                           className="text-xs mt-1"
                           style={{ color: "var(--text-secondary)" }}
                         >
-                          {client.cargos.length}{" "}
-                          {client.cargos.length === 1 ? "cargo" : "cargos"}
+                          {client.intakeGroups.length} intake groups ·{" "}
+                          {clientDocumentCount} documents
                         </div>
                       </div>
                     </div>
@@ -380,15 +384,15 @@ export function PendingDocumentsPage() {
                   {clientOpen && (
                     <div className="px-6 pb-4">
                       <div className="space-y-3">
-                        {client.cargos.map((cargo) => {
-                          const cargoOpen = expandedGroups.has(cargo.cargoId);
+                        {client.intakeGroups.map((group) => {
+                          const groupOpen = expandedGroups.has(group.groupId);
                           return (
                             <div
-                              key={cargo.cargoId}
+                              key={group.groupId}
                               className="rounded border border-default"
                             >
                               <button
-                                onClick={() => toggleGroup(cargo.cargoId)}
+                                onClick={() => toggleGroup(group.groupId)}
                                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
@@ -396,26 +400,26 @@ export function PendingDocumentsPage() {
                                     className="font-mono text-sm"
                                     style={{ color: "var(--primary)" }}
                                   >
-                                    {cargo.cargoId}
+                                    {group.groupId}
                                   </span>
                                   <span
                                     className="text-xs"
                                     style={{ color: "var(--text-secondary)" }}
                                   >
-                                    ({cargo.documents.length} docs)
+                                    ({group.documents.length} documents)
                                   </span>
                                 </div>
                                 <div
                                   className="text-sm"
                                   style={{ color: "var(--text-secondary)" }}
                                 >
-                                  {cargoOpen ? "−" : "+"}
+                                  {groupOpen ? "−" : "+"}
                                 </div>
                               </button>
 
-                              {cargoOpen && (
+                              {groupOpen && (
                                 <div className="divide-y border-default">
-                                  {cargo.documents.map((doc) => {
+                                  {group.documents.map((doc) => {
                                     const verifying = Boolean(busy[doc.id]);
                                     const opening = Boolean(
                                       busy[`open:${doc.id}`],
@@ -505,7 +509,7 @@ export function PendingDocumentsPage() {
                                                     {doc.bl_validation_status ===
                                                     "approved"
                                                       ? `B/L ${doc.bill_of_lading} verified`
-                                                      : `Associated with B/L ${doc.bill_of_lading}`}
+                                                      : `B/L ${doc.bill_of_lading} detected — awaiting approval`}
                                                   </span>
                                                 ) : (
                                                   <span className="font-semibold">
