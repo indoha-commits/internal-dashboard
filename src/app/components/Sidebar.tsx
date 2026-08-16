@@ -15,7 +15,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, collapsed, onTogg
   return (
     <>
       <aside
-        className={`hidden lg:flex flex-col h-screen overflow-y-auto sidebar-scroll flex-shrink-0 transition-all duration-300 ${
+        className={`hidden lg:flex flex-col sticky top-0 h-screen overflow-hidden sidebar-scroll flex-shrink-0 transition-all duration-300 ${
           collapsed ? 'w-0 overflow-hidden' : 'w-64'
         }`}
         style={{

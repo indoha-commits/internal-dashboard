@@ -221,7 +221,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen overflow-x-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden overflow-x-hidden">
       {/* Desktop sidebar */}
       <Sidebar
         currentPage={currentPageMemo}
@@ -280,7 +280,7 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className="flex-1 min-w-0 px-4 py-6 sm:px-6 sm:py-8 md:px-12 md:py-12">
+      <main className="flex-1 min-w-0 lg:h-screen lg:overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 md:px-12 md:py-12">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
