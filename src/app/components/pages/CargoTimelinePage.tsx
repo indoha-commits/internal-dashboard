@@ -299,9 +299,9 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <div>
-                  <div className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>Bill of Lading</div>
+                  <div className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>Container</div>
                   <div className="font-mono text-lg" style={{ color: 'var(--primary)' }}>
-                    {data.cargo?.id}
+                    {data.cargo?.container_id || data.cargo?.id}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
