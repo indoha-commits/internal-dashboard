@@ -253,7 +253,7 @@ export function CargoTimelinePage({ preselectedCargoId = '' }: CargoTimelinePage
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Cargo ID"
+            placeholder="Search by container number"
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSearch();
             }}

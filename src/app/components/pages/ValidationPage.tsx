@@ -291,7 +291,7 @@ export function ValidationPage() {
                                     className="font-mono text-sm"
                                     style={{ color: "var(--primary)" }}
                                   >
-                                    {it.cargo_id}
+                                    {it.container_id || it.cargo_id}
                                   </div>
                                   <div
                                     className="text-xs mt-1"

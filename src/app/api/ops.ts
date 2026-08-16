@@ -161,6 +161,7 @@ export type OpsCargoRegistryResponse = {
     cargos: Array<{
       cargo_id: string;
       cargo_uuid: string;
+      container_id: string | null;
       created_at: string;
       latest_event_type: string | null;
       latest_event_time: string | null;
@@ -175,6 +176,7 @@ export async function getOpsCargoRegistry(): Promise<OpsCargoRegistryResponse> {
 export type OpsCargoTimelineResponse = {
   cargo: {
     id: string;
+    container_id: string | null;
     client_id: string;
     client_name: string;
     category: string;
@@ -244,6 +246,7 @@ export async function getOpsActivityLog(): Promise<OpsActivityLogResponse> {
 
 export type OpsValidationQueueItem = {
   cargo_id: string;
+  container_id: string | null;
   client_id: string;
   client_name: string;
   documents: Array<{

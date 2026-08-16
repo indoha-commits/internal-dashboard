@@ -49,6 +49,7 @@ type CargoGroup = {
   cargos: Array<{
     cargoId: string;
     cargoUuid: string;
+    containerId: string | null;
     createdAt: string;
     latestEvent: string | null;
     latestEventTime: string | null;
@@ -189,6 +190,7 @@ export function CargoRegistryPage({
       cargos: g.cargos.map((c) => ({
         cargoId: c.cargo_id,
         cargoUuid: c.cargo_uuid,
+        containerId: c.container_id ?? null,
         createdAt: c.created_at,
         latestEvent: c.latest_event_type,
         latestEventTime: c.latest_event_time,
@@ -223,6 +225,7 @@ export function CargoRegistryPage({
             cargos: g.cargos.map((c) => ({
               cargoId: c.cargo_id,
               cargoUuid: c.cargo_uuid,
+              containerId: c.container_id ?? null,
               createdAt: c.created_at,
               latestEvent: c.latest_event_type,
               latestEventTime: c.latest_event_time,
@@ -269,7 +272,7 @@ export function CargoRegistryPage({
       ? groups.filter((g) => {
           const client = (g.clientName ?? '').toLowerCase();
           const bol = (g.billOfLading ?? '').toLowerCase();
-          return client.includes(q) || bol.includes(q);
+          return client.includes(q) || bol.includes(q) || g.cargos.some((c) => (c.containerId ?? "").toLowerCase().includes(q));
         })
       : groups;
 
@@ -532,7 +535,7 @@ export function CargoRegistryPage({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by client or cargo id"
+            placeholder="Search by client, B/L, or container number"
             aria-label="Search cargo registry"
           />
         </div>
@@ -580,12 +583,12 @@ export function CargoRegistryPage({
                       <div className="sm:hidden space-y-3">
                         {group.cargos.map((c) => (
                           <div
-                            key={c.cargoId}
+                            key={c.containerId || c.cargoId}
                             className="rounded-lg border p-3 sm:p-4 border-default"
                           >
                             <div className="min-w-0">
                               <div className="font-mono text-sm sm:text-base" style={{ color: 'var(--primary)' }}>
-                                {c.cargoId}
+                                {c.containerId || c.cargoId}
                               </div>
                               <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Last update {formatTimestamp(c.latestEventTime)}</div>
                               <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Stage: {formatEvent(c.latestEvent)}</div>
@@ -624,10 +627,10 @@ export function CargoRegistryPage({
                       <div className="hidden sm:block rounded border border-default">
                         <div className="divide-y border-default">
                           {group.cargos.map((c) => (
-                            <div key={c.cargoId} className="px-4 py-3 flex items-center justify-between gap-4">
+                            <div key={c.containerId || c.cargoId} className="px-4 py-3 flex items-center justify-between gap-4">
                               <div>
                                 <div className="font-mono text-sm" style={{ color: 'var(--primary)' }}>
-                                  {c.cargoId}
+                                  {c.containerId || c.cargoId}
                                 </div>
                                 <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Last update {formatTimestamp(c.latestEventTime)}</div>
                                 <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Stage: {formatEvent(c.latestEvent)}</div>
