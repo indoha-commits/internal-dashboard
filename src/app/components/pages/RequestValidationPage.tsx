@@ -349,8 +349,7 @@ export function RequestValidationPage() {
           <DialogHeader>
             <DialogTitle>Approve bill of lading</DialogTitle>
             <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Jarvis will read the file, infer category (Electronics / Raw materials / Meds &amp; beverage), containers, and origin → destination.
-              Only tax pathway is required here.
+              Review detected shipment details before creating cargo.
             </p>
           </DialogHeader>
           {approveDialog && !approveDialog.request.linked && (
@@ -404,7 +403,11 @@ export function RequestValidationPage() {
               }
             >
               <SelectTrigger className="bg-background">
-                <SelectValue />
+                <span className="truncate">
+                  {approveDialog?.clearancePathway === 'T1_TRANSIT'
+                    ? 'T1 transit'
+                    : 'Port clearance'}
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="PORT_CLEARANCE">
@@ -415,7 +418,7 @@ export function RequestValidationPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Expected arrival (optional)</Label>
+            <Label>Expected arrival</Label>
             <Input
               type="date"
               value={approveDialog?.expectedArrival ?? ''}
@@ -425,16 +428,13 @@ export function RequestValidationPage() {
           </div>
           {approveDialog && requestContainerEvidence(approveDialog.request).length ? (
             <div className="space-y-2">
-              <Label>Detected container readings</Label>
-              <div className="space-y-2 rounded border border-default p-3">
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Evidence only — rejected financial or registration identifiers cannot be confirmed as containers.</p>
-                <ul className="space-y-1 text-sm">
-                  {requestContainerEvidence(approveDialog.request).map((id) => (
-                    <li key={id} className="font-mono">{id}</li>
-                  ))}
-                </ul>
-              </div>
-              {needsManualContainerFallback(approveDialog.request) ? <>
+              <Label>Containers detected · {requestContainerEvidence(approveDialog.request).length}</Label>
+              <ul className="space-y-1 text-sm">
+                {requestContainerEvidence(approveDialog.request).map((id) => (
+                  <li key={id} className="font-mono">{id}</li>
+                ))}
+              </ul>
+              {needsManualContainerFallback(approveDialog.request) ? (<>
                 <Label htmlFor="confirmed-container-ids">Confirmed container IDs</Label>
                 <Input
                   id="confirmed-container-ids"
@@ -447,21 +447,23 @@ export function RequestValidationPage() {
                   placeholder="e.g. MSCU1234567, TGHU7654321"
                 />
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Manual fallback is available because no checksum-valid container was found. Enter only IDs verified against the file.</p>
-              </> : <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Validated container IDs were found, so no manual fallback is needed.</p>}
+              </>) : null}
             </div>
           ) : null}
-          <div className="space-y-2">
-            <Label>Container count if B/L has no ISO numbers (optional)</Label>
-            <Input
-              type="number"
-              min={1}
-              max={50}
-              value={approveDialog?.containerCount ?? ''}
-              onChange={(e) => setApproveDialog((prev: any) => prev ? { ...prev, containerCount: e.target.value } : prev)}
-              className="bg-background"
-              placeholder="e.g. 5 (records the count only; it never creates placeholder IDs)"
-            />
-          </div>
+          {approveDialog && !hasValidatedContainer(approveDialog.request) ? (
+            <div className="space-y-2">
+              <Label>Container count if B/L has no ISO numbers (optional)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={approveDialog?.containerCount ?? ''}
+                onChange={(e) => setApproveDialog((prev: any) => prev ? { ...prev, containerCount: e.target.value } : prev)}
+                className="bg-background"
+                placeholder="e.g. 5 (records the count only; it never creates placeholder IDs)"
+              />
+            </div>
+          ) : null}
           <DialogFooter>
             <Button onClick={() => setApproveDialog(null)} variant="outline">Cancel</Button>
             <Button
