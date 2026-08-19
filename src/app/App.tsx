@@ -3,6 +3,7 @@ import { Menu, X } from 'lucide-react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/app/components/Sidebar';
 import { OpsSidebarContent } from '@/app/components/OpsSidebarContent';
+import { TenantSetupGate } from '@/app/components/TenantSetupGate';
 import { getSupabase } from '@/app/auth/supabase';
 import { sessionStore } from '@/app/auth/sessionStore';
 import {
@@ -23,10 +24,12 @@ import { DeleteClientPage } from '@/app/components/pages/DeleteClientPage';
 import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { SettingsPage } from '@/app/components/pages/SettingsPage';
+import { SetupPage } from '@/app/components/pages/SetupPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
   | 'dashboard'
+  | 'setup'
   | 'pending-documents'
   | 'validation-requests'
   | 'validation'
@@ -41,6 +44,7 @@ type OpsPageId =
 
 const pageToPath: Record<OpsPageId, string> = {
   dashboard: '',
+  setup: 'setup',
   'pending-documents': 'pending-documents',
   'validation-requests': 'validation-requests',
   validation: 'validation',
@@ -56,6 +60,7 @@ const pageToPath: Record<OpsPageId, string> = {
 
 const pathToPage: Record<string, OpsPageId> = {
   '': 'dashboard',
+  setup: 'setup',
   'pending-documents': 'pending-documents',
   'validation-requests': 'validation-requests',
   validation: 'validation',
@@ -113,6 +118,8 @@ function OpsPageRenderer({
   switch (currentPage) {
     case 'dashboard':
       return <DashboardPage />;
+    case 'setup':
+      return <SetupPage />;
     case 'pending-documents':
       return <PendingDocumentsPage />;
     case 'validation-requests':
@@ -280,15 +287,17 @@ export default function App() {
         </SheetContent>
       </Sheet>
 
-      <main className="flex-1 min-w-0 lg:h-screen lg:overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 md:px-12 md:py-12">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="/:pageSlug"
-            element={<OpsPageRenderer key={currentPageMemo} currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
-          />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+<main className="flex-1 min-w-0 lg:h-screen lg:overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 md:px-12 md:py-12">
+        <TenantSetupGate>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/:pageSlug"
+              element={<OpsPageRenderer key={currentPageMemo} currentPage={currentPageMemo} setCurrentPage={setCurrentPage} />}
+            />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </TenantSetupGate>
       </main>
     </div>
   );

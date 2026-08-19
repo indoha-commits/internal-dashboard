@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EmailIntakeSetupPage } from './EmailIntakeSetupPage';
 import { PhoneNumbersAccessPage } from './PhoneNumbersAccessPage';
 import { ActivityLogPage } from './ActivityLogPage';
+import { GeneralSettingsPage } from './GeneralSettingsPage';
 
 type SettingsTab = 'general' | 'email-intake' | 'phone-numbers' | 'activity-log';
 
@@ -39,9 +40,7 @@ export function SettingsPage() {
       </div>
 
       <div>
-        {activeTab === 'general' && (
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Settings page coming soon.</p>
-        )}
+        {activeTab === 'general' && <GeneralSettingsPage />}
         {activeTab === 'email-intake' && <EmailIntakeSetupPage />}
         {activeTab === 'phone-numbers' && <PhoneNumbersAccessPage />}
         {activeTab === 'activity-log' && <ActivityLogPage />}

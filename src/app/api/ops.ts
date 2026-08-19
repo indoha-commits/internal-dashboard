@@ -11,6 +11,90 @@ export async function getMe(): Promise<MeResponse> {
   return await fetchJson<MeResponse>("/me");
 }
 
+export type OpsMeResponse = {
+  user_id: string;
+  role: string;
+  tenant: {
+    id: string;
+    company_name: string | null;
+    subdomain: string | null;
+    slug: string | null;
+    status: string | null;
+    currency: string | null;
+    country: string | null;
+    logo_url: string | null;
+  } | null;
+  membership: {
+    role: string;
+    dashboard_type: string | null;
+    membership_status: string | null;
+  } | null;
+  onboarding: {
+    workspace_completed: boolean;
+    intake_completed: boolean;
+    access_completed: boolean;
+    walkthrough_done: boolean;
+    walkthrough_done_at: string | null;
+    completed_at: string | null;
+  };
+  readiness: {
+    workspace: boolean;
+    email_intake: boolean;
+    phone_access: boolean;
+    team: boolean;
+    ready: boolean;
+    manager_count: number;
+    ops_count: number;
+    intake_email_alias: string | null;
+  };
+};
+
+export async function getOpsMe(): Promise<OpsMeResponse> {
+  return await fetchJson<OpsMeResponse>("/ops/me");
+}
+
+export async function completeTenantSetup(): Promise<{
+  ok: true;
+  readiness: OpsMeResponse["readiness"];
+  completed_at: string;
+}> {
+  return await fetchJson<{
+    ok: true;
+    readiness: OpsMeResponse["readiness"];
+    completed_at: string;
+  }>("/ops/tenant/setup/complete", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export type UpdateOpsTenantInput = {
+  company_name?: string;
+  country?: string;
+  currency?: string;
+  logo_url?: string;
+};
+
+export type UpdateOpsTenantResponse = {
+  ok: true;
+  tenant: {
+    id: string;
+    company_name: string | null;
+    country: string | null;
+    currency: string | null;
+    logo_url: string | null;
+  };
+};
+
+export async function updateOpsTenant(
+  input: UpdateOpsTenantInput,
+): Promise<UpdateOpsTenantResponse> {
+  return await fetchJson<UpdateOpsTenantResponse>("/ops/tenant", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export type ClaimInternalSessionResponse =
   | { ok: true; session_id: string; expires_at: string }
   | {

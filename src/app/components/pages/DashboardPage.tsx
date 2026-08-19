@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, FileText, Eye, XCircle, Inbox, Upload } from 'lucide-react';
-import { getOpsDashboard, getOpsDocumentSignedUrl, type OpsDashboardResponse } from '@/app/api/ops';
+import { AlertCircle, FileText, Eye, XCircle, Inbox, Upload, ShieldCheck, Mail, Phone, UserRound, ArrowRight, X } from 'lucide-react';
+import { getOpsDashboard, getOpsDocumentSignedUrl, getOpsMe, type OpsDashboardResponse, type OpsMeResponse } from '@/app/api/ops';
 import { getSupabase } from '@/app/auth/supabase';
 import { Button } from '@/app/components/ui/button';
 
@@ -54,11 +54,14 @@ function daysSince(iso: string | null): number {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<OpsDashboardResponse | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [tenantName, setTenantName] = useState<string>('');
+  const [setup, setSetup] = useState<OpsMeResponse | null>(null);
+  const [setupDismissed, setSetupDismissed] = useState(false);
 
   async function refresh() {
     const res = await getOpsDashboard();
@@ -91,8 +94,18 @@ export function DashboardPage() {
       }
     }
 
+    async function loadSetup() {
+      try {
+        const me = await getOpsMe();
+        if (!cancelled) setSetup(me);
+      } catch {
+        if (!cancelled) setSetup(null);
+      }
+    }
+
     load();
     loadTenant();
+    loadSetup();
     return () => {
       cancelled = true;
     };
@@ -131,6 +144,61 @@ export function DashboardPage() {
         <h1 className="page-title">System Overview</h1>
         <p className="page-desc mt-2">Key metrics, pending actions, and urgent items across all operations</p>
       </div>
+
+      {/* Phase 5 — incomplete setup banner */}
+      {setup && !setup.readiness.ready && !setupDismissed && (
+        <div className="mb-6 rounded-lg border border-amber-300/40 bg-amber-50 dark:bg-amber-950/30 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Workspace setup incomplete</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    A few steps remain before this tenant is fully operational.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSetupDismissed(true)}
+                  className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 shrink-0"
+                  aria-label="Dismiss setup banner"
+                >
+                  <X className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  { ok: setup.readiness.workspace, label: 'Workspace', icon: ShieldCheck },
+                  { ok: setup.readiness.email_intake, label: 'Email intake', icon: Mail },
+                  { ok: setup.readiness.phone_access, label: 'WhatsApp access', icon: Phone },
+                  { ok: setup.readiness.team, label: 'Team logins', icon: UserRound },
+                ].map(({ ok, label, icon: Icon }) => (
+                  <span
+                    key={label}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      ok
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                    }`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate('/setup')}
+              variant="outline"
+              className="whitespace-nowrap text-sm shrink-0"
+            >
+              Complete setup
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Desktop KPI Grid */}
       <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-12">
