@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, LayoutDashboard, Clock, Package, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Settings, Sun, Moon, ChevronUp } from 'lucide-react';
+import { FileText, LayoutDashboard, Clock, Package, CheckSquare, DownloadCloud, LogOut, ClipboardCheck, Inbox, Settings, CreditCard, Sun, Moon, ChevronUp } from 'lucide-react';
 import { sessionStore } from '@/app/auth/sessionStore';
 
 interface OpsSidebarContentProps {
@@ -38,6 +38,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Tools',
     items: [
+      { id: 'billing', label: 'Billing', icon: CreditCard },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },

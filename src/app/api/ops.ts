@@ -849,3 +849,58 @@ export async function deleteClientNumber(id: string): Promise<{ ok: true }> {
     method: "DELETE",
   });
 }
+
+// ── Tenant billing (MoMo QR + confirm) ──
+
+export type TenantBillingResponse = {
+  settings: {
+    payee_number: string;
+    currency: string;
+    setup_fee_amount: number;
+  };
+  invoices: Array<{
+    id: string;
+    invoice_number: string;
+    invoice_type: string;
+    amount: number;
+    currency: string;
+    status: string;
+    paid_at: string | null;
+    payment_reference: string | null;
+    created_at: string;
+  }>;
+  payment_intents: Array<{
+    id: string;
+    invoice_id: string | null;
+    intent_type: string;
+    provider: string;
+    amount: number;
+    currency: string;
+    status: string;
+    external_reference: string | null;
+    momo_reference: string | null;
+    momo_transaction_id: string | null;
+    payer_phone: string | null;
+    payer_name: string | null;
+    qr_svg: string | null;
+    pay_url: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+};
+
+export async function getTenantBilling(): Promise<TenantBillingResponse> {
+  return await fetchJson<TenantBillingResponse>("/ops/tenant/billing");
+}
+
+export async function confirmTenantPayment(input: {
+  payment_intent_id: string;
+  momo_transaction_id: string;
+  payer_phone?: string;
+  payer_name?: string;
+}): Promise<{ ok: true; status: string }> {
+  return await fetchJson<{ ok: true; status: string }>("/ops/tenant/billing/confirm", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

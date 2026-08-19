@@ -25,6 +25,7 @@ import { AddClientUserPage } from '@/app/components/pages/AddClientUserPage';
 import { OperationsUpdatePage } from '@/app/components/pages/OperationsUpdatePage';
 import { SettingsPage } from '@/app/components/pages/SettingsPage';
 import { SetupPage } from '@/app/components/pages/SetupPage';
+import { BillingPage } from '@/app/components/pages/BillingPage';
 import { fetchJson } from '@/app/api/client';
 
 type OpsPageId =
@@ -40,6 +41,7 @@ type OpsPageId =
   | 'create-client'
   | 'delete-client'
   | 'add-client-user'
+  | 'billing'
   | 'settings';
 
 const pageToPath: Record<OpsPageId, string> = {
@@ -55,6 +57,7 @@ const pageToPath: Record<OpsPageId, string> = {
   'create-client': 'create-client',
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
+  billing: 'billing',
   settings: 'settings',
 };
 
@@ -71,6 +74,7 @@ const pathToPage: Record<string, OpsPageId> = {
   'create-client': 'create-client',
   'delete-client': 'delete-client',
   'add-client-user': 'add-client-user',
+  billing: 'billing',
   settings: 'settings',
 };
 
@@ -167,6 +171,8 @@ function OpsPageRenderer({
       );
     case 'operations-update':
       return <OperationsUpdatePage />;
+    case 'billing':
+      return <BillingPage />;
     case 'settings':
       return <SettingsPage />;
     default:
